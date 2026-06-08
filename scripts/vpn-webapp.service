@@ -1,0 +1,49 @@
+# =============================================================
+# vpn-webapp.service — systemd unit for the Flask/Gunicorn app
+#
+# Install:
+#   sudo cp scripts/vpn-webapp.service /etc/systemd/system/
+#   sudo systemctl daemon-reload
+#   sudo systemctl enable --now vpn-webapp
+# =============================================================
+
+[Unit]
+Description=VPN Access Management System (Gunicorn)
+Documentation=https://gunicorn.org
+# Start only after network AND database are ready
+After=network.target mysql.service
+Wants=mysql.service
+
+[Service]
+# ---- Change these three lines to match your setup ----
+User=www-data
+Group=www-data
+WorkingDirectory=/opt/vpn-project
+# -------------------------------------------------------
+
+# Load .env so config.py picks up the variables
+EnvironmentFile=/opt/vpn-project/.env
+
+# Activate venv then launch Gunicorn
+ExecStart=/opt/vpn-project/venv/bin/gunicorn \
+          --workers 4 \
+          --bind 127.0.0.1:5000 \
+          --timeout 120 \
+          --access-logfile /var/log/vpn-webapp/access.log \
+          --error-logfile  /var/log/vpn-webapp/error.log \
+          "app:create_app()"
+
+# Graceful reload on SIGHUP (zero-downtime)
+ExecReload=/bin/kill -s HUP $MAINPID
+
+# Auto-restart on crash
+Restart=on-failure
+RestartSec=5s
+
+# Security hardening
+NoNewPrivileges=true
+PrivateTmp=true
+
+[Install]
+# Start automatically on every boot
+WantedBy=multi-user.target

@@ -1,0 +1,123 @@
+{% extends 'base.html' %}
+{% block title %}Create Account — VPN Manager{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center" style="margin-top:4rem;">
+  <div class="col-sm-10 col-md-7 col-lg-5">
+
+    <div class="text-center mb-4">
+      <div class="d-inline-flex align-items-center justify-content-center
+                  bg-success bg-opacity-10 border border-success rounded-circle mb-3"
+           style="width:72px;height:72px;">
+        <i class="fas fa-user-plus fa-2x text-success"></i>
+      </div>
+      <h4 class="fw-bold mb-0">Create VPN Account</h4>
+      <p class="text-muted small mt-1">Free access for 7 days — no credit card required</p>
+    </div>
+
+    <div class="card shadow border-0">
+      <div class="card-body p-4">
+
+        <form method="POST" action="{{ url_for('auth.register') }}" novalidate>
+
+          <div class="row g-3">
+            <div class="col-12">
+              <label for="full_name" class="form-label fw-semibold">Full Name</label>
+              <input type="text" class="form-control"
+                     id="full_name" name="full_name"
+                     placeholder="John Doe" autocomplete="name" />
+            </div>
+
+            <div class="col-md-6">
+              <label for="username" class="form-label fw-semibold">
+                Username <span class="text-danger">*</span>
+              </label>
+              <input type="text" class="form-control"
+                     id="username" name="username"
+                     placeholder="johndoe"
+                     required autocomplete="username" />
+            </div>
+
+            <div class="col-md-6">
+              <label for="email" class="form-label fw-semibold">
+                Email <span class="text-danger">*</span>
+              </label>
+              <input type="email" class="form-control"
+                     id="email" name="email"
+                     placeholder="john@example.com"
+                     required autocomplete="email" />
+            </div>
+
+            <div class="col-12">
+              <label for="password" class="form-label fw-semibold">
+                Password <span class="text-danger">*</span>
+              </label>
+              <div class="input-group">
+                <input type="password" class="form-control"
+                       id="password" name="password"
+                       placeholder="Min. 8 characters"
+                       required minlength="8"
+                       autocomplete="new-password" />
+                <button class="btn btn-outline-secondary" type="button" id="togglePw">
+                  <i class="fas fa-eye fa-sm"></i>
+                </button>
+              </div>
+              <div id="strengthBar"
+                   class="mt-2"
+                   style="height:4px;border-radius:2px;transition:width .3s;width:0;background:#dc3545;">
+              </div>
+              <div class="form-text">Minimum 8 characters.</div>
+            </div>
+          </div>
+
+          <div class="alert alert-info d-flex align-items-start gap-2 py-2 mt-4 small">
+            <i class="fas fa-circle-info mt-1 flex-shrink-0"></i>
+            <span>
+              Your VPN access will be valid for <strong>7 days</strong>.
+              Contact an administrator to extend or if you need longer access.
+            </span>
+          </div>
+
+          <button type="submit" class="btn btn-success w-100 fw-semibold py-2 mt-2">
+            <i class="fas fa-user-plus me-2"></i>Create Account
+          </button>
+        </form>
+
+        <hr class="my-4" />
+        <p class="text-center text-muted small mb-0">
+          Already have an account?
+          <a href="{{ url_for('auth.login') }}" class="text-primary text-decoration-none fw-semibold">Sign in</a>
+        </p>
+
+      </div>
+    </div>
+
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  document.getElementById('togglePw').addEventListener('click', function () {
+    const pw = document.getElementById('password');
+    const ic = this.querySelector('i');
+    pw.type = pw.type === 'password' ? 'text' : 'password';
+    ic.classList.toggle('fa-eye');
+    ic.classList.toggle('fa-eye-slash');
+  });
+
+  document.getElementById('password').addEventListener('input', function () {
+    const v = this.value;
+    const bar = document.getElementById('strengthBar');
+    let score = 0;
+    if (v.length >= 8)        score++;
+    if (/[A-Z]/.test(v))     score++;
+    if (/[0-9]/.test(v))     score++;
+    if (/[^A-Za-z0-9]/.test(v)) score++;
+    const pct    = score * 25;
+    const colors = ['#dc3545','#fd7e14','#ffc107','#198754'];
+    bar.style.width      = pct + '%';
+    bar.style.background = colors[score - 1] || '#dc3545';
+  });
+</script>
+{% endblock %}

@@ -1,0 +1,106 @@
+{% extends 'base.html' %}
+{% block title %}Sign In — VPN Manager{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center" style="margin-top: 6rem;">
+  <div class="col-sm-10 col-md-6 col-lg-4">
+
+    <div class="text-center mb-4">
+      <div class="d-inline-flex align-items-center justify-content-center
+                  bg-primary bg-opacity-10 border border-primary rounded-circle mb-3"
+           style="width:72px;height:72px;">
+        <i class="fas fa-shield-halved fa-2x text-primary"></i>
+      </div>
+      <h4 class="fw-bold mb-0">VPN Management System</h4>
+      <p class="text-muted small mt-1">Sign in to continue</p>
+    </div>
+
+    <div class="card shadow border-0">
+      <div class="card-body p-4">
+
+        <form method="POST" action="{{ url_for('auth.login') }}" novalidate>
+
+          <!-- Role toggle -->
+          <div class="mb-4">
+            <label class="form-label text-muted small text-uppercase fw-semibold">Account type</label>
+            <div class="btn-group w-100" role="group">
+              <input type="radio" class="btn-check" name="role" id="rUser" value="user" checked>
+              <label class="btn btn-outline-primary" for="rUser">
+                <i class="fas fa-user me-1"></i> User
+              </label>
+              <input type="radio" class="btn-check" name="role" id="rAdmin" value="admin">
+              <label class="btn btn-outline-danger" for="rAdmin">
+                <i class="fas fa-user-shield me-1"></i> Admin
+              </label>
+            </div>
+          </div>
+
+          <!-- Username -->
+          <div class="mb-3">
+            <label for="username" class="form-label fw-semibold">Username</label>
+            <div class="input-group">
+              <span class="input-group-text">
+                <i class="fas fa-user fa-sm text-muted"></i>
+              </span>
+              <input type="text"
+                     class="form-control"
+                     id="username" name="username"
+                     placeholder="your_username"
+                     required autocomplete="username" />
+            </div>
+          </div>
+
+          <!-- Password -->
+          <div class="mb-4">
+            <label for="password" class="form-label fw-semibold">Password</label>
+            <div class="input-group">
+              <span class="input-group-text">
+                <i class="fas fa-lock fa-sm text-muted"></i>
+              </span>
+              <input type="password"
+                     class="form-control"
+                     id="password" name="password"
+                     placeholder="••••••••"
+                     required autocomplete="current-password" />
+              <button class="btn btn-outline-secondary" type="button" id="togglePw"
+                      title="Show/hide password">
+                <i class="fas fa-eye fa-sm"></i>
+              </button>
+            </div>
+          </div>
+
+          <button type="submit" class="btn btn-primary w-100 fw-semibold py-2">
+            <i class="fas fa-right-to-bracket me-2"></i>Sign In
+          </button>
+        </form>
+
+        <hr class="my-4" />
+        <p class="text-center text-muted small mb-0">
+          Don't have an account?
+          <a href="{{ url_for('auth.register') }}" class="text-primary text-decoration-none fw-semibold">
+            Register here
+          </a>
+        </p>
+
+      </div>
+    </div>
+
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  document.getElementById('togglePw').addEventListener('click', function () {
+    const pw = document.getElementById('password');
+    const ic = this.querySelector('i');
+    if (pw.type === 'password') {
+      pw.type = 'text';
+      ic.classList.replace('fa-eye', 'fa-eye-slash');
+    } else {
+      pw.type = 'password';
+      ic.classList.replace('fa-eye-slash', 'fa-eye');
+    }
+  });
+</script>
+{% endblock %}

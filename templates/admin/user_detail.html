@@ -1,0 +1,191 @@
+{% extends 'base.html' %}
+{% block title %}{{ user.username }} — VPN Manager{% endblock %}
+
+{% block content %}
+<div class="d-flex align-items-center gap-2 mb-4">
+  <a href="{{ url_for('admin.users') }}" class="btn btn-outline-secondary btn-sm">
+    <i class="fas fa-arrow-left"></i>
+  </a>
+  <div>
+    <h4 class="fw-bold mb-0 text-dark">
+      <i class="fas fa-user text-primary me-2"></i>{{ user.username }}
+      {% if not user.is_active %}
+        <span class="badge bg-danger ms-2">Revoked</span>
+      {% elif user.expires_at < now %}
+        <span class="badge bg-warning text-dark ms-2">Expired</span>
+      {% else %}
+        <span class="badge bg-success ms-2">Active</span>
+      {% endif %}
+    </h4>
+    <p class="text-muted small mb-0">{{ user.email }}</p>
+  </div>
+</div>
+
+<div class="row g-3">
+
+  <!-- Account info -->
+  <div class="col-md-6">
+    <div class="card border-0 shadow-sm h-100">
+      <div class="card-header">
+        <i class="fas fa-id-card me-2 text-primary"></i>Account Details
+      </div>
+      <ul class="list-group list-group-flush small">
+        <li class="list-group-item d-flex justify-content-between py-3">
+          <span class="text-muted">Full Name</span>
+          <span class="fw-semibold text-dark">{{ user.full_name or '—' }}</span>
+        </li>
+        <li class="list-group-item d-flex justify-content-between py-3">
+          <span class="text-muted">Username</span>
+          <code>{{ user.username }}</code>
+        </li>
+        <li class="list-group-item d-flex justify-content-between py-3">
+          <span class="text-muted">Email</span>
+          <span class="text-dark">{{ user.email }}</span>
+        </li>
+        <li class="list-group-item d-flex justify-content-between py-3">
+          <span class="text-muted">Created</span>
+          <span class="text-dark">{{ user.created_at | datetimefmt }}</span>
+        </li>
+        <li class="list-group-item d-flex justify-content-between py-3">
+          <span class="text-muted">Expires</span>
+          <span class="fw-semibold {% if user.expires_at < now %}text-danger{% else %}text-success{% endif %}">
+            {{ user.expires_at | datetimefmt }}
+          </span>
+        </li>
+      </ul>
+      <div class="card-footer d-flex gap-2">
+        <div class="dropdown">
+          <button class="btn btn-success btn-sm dropdown-toggle" data-bs-toggle="dropdown">
+            <i class="fas fa-calendar-plus me-1"></i>Extend
+          </button>
+          <ul class="dropdown-menu shadow">
+            {% for d in [1, 3, 7, 14, 30] %}
+            <li>
+              <form method="POST" action="{{ url_for('admin.extend_user', user_id=user.id) }}">
+                <input type="hidden" name="days" value="{{ d }}" />
+                <button type="submit" class="dropdown-item">
+                  <i class="fas fa-plus me-2 text-success"></i>+{{ d }} day{% if d > 1 %}s{% endif %}
+                </button>
+              </form>
+            </li>
+            {% endfor %}
+          </ul>
+        </div>
+        {% if user.is_active %}
+        <form method="POST" action="{{ url_for('admin.revoke_user', user_id=user.id) }}"
+              onsubmit="return confirm('Revoke {{ user.username }}?')">
+          <button type="submit" class="btn btn-danger btn-sm">
+            <i class="fas fa-ban me-1"></i>Revoke
+          </button>
+        </form>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  <!-- VPN peer info -->
+  <div class="col-md-6">
+    <div class="card border-0 shadow-sm h-100">
+      <div class="card-header">
+        <i class="fas fa-network-wired me-2 text-primary"></i>VPN Peer
+      </div>
+      {% if peer %}
+      <ul class="list-group list-group-flush small">
+        <li class="list-group-item d-flex justify-content-between py-3">
+          <span class="text-muted">VPN IP</span>
+          <code class="text-primary fw-semibold">{{ peer.vpn_ip }}</code>
+        </li>
+        <li class="list-group-item d-flex justify-content-between py-3">
+          <span class="text-muted">DNS</span>
+          <span class="text-dark">{{ peer.dns }}</span>
+        </li>
+        <li class="list-group-item d-flex justify-content-between py-3">
+          <span class="text-muted">Server Endpoint</span>
+          <code>{{ peer.server_endpoint }}</code>
+        </li>
+        <li class="list-group-item d-flex justify-content-between py-3">
+          <span class="text-muted">Config Downloaded</span>
+          {% if peer.config_downloaded %}
+            <span class="text-success fw-semibold"><i class="fas fa-check me-1"></i>Yes</span>
+          {% else %}
+            <span class="text-warning fw-semibold"><i class="fas fa-clock me-1"></i>Not yet</span>
+          {% endif %}
+        </li>
+        <li class="list-group-item d-flex justify-content-between py-3">
+          <span class="text-muted">Generated</span>
+          <span class="text-dark">{{ peer.created_at | datetimefmt }}</span>
+        </li>
+      </ul>
+      {% else %}
+      <div class="card-body text-center text-muted py-5">
+        <i class="fas fa-plug-circle-xmark fa-2x mb-3 opacity-25 d-block text-secondary"></i>
+        No VPN peer configured for this user.
+      </div>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- Activity logs -->
+  <div class="col-12">
+    <div class="card border-0 shadow-sm">
+      <div class="card-header">
+        <i class="fas fa-history me-2 text-warning"></i>Activity History
+      </div>
+      <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0 small">
+          <thead>
+            <tr>
+              <th class="ps-3">Time</th>
+              <th>Event</th>
+              <th>VPN IP</th>
+              <th>Real IP</th>
+              <th>Location</th>
+              <th>Notes</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for log in logs %}
+            <tr>
+              <td class="ps-3 text-muted text-nowrap">{{ log.event_time | datetimefmt }}</td>
+              <td>
+                {% set et = log.event_type %}
+                {% if et == 'key_generated' %}
+                  <span class="badge bg-primary-subtle text-primary border border-primary-subtle">Generated</span>
+                {% elif et == 'config_download' %}
+                  <span class="badge bg-info-subtle text-info border border-info-subtle">Downloaded</span>
+                {% elif et == 'connect' %}
+                  <span class="badge bg-success-subtle text-success border border-success-subtle">Connected</span>
+                {% elif et == 'disconnect' %}
+                  <span class="badge bg-secondary-subtle text-secondary border border-secondary-subtle">Disconnected</span>
+                {% elif et == 'revoked' %}
+                  <span class="badge bg-danger-subtle text-danger border border-danger-subtle">Revoked</span>
+                {% elif et == 'expired' %}
+                  <span class="badge bg-warning-subtle text-warning border border-warning-subtle">Expired</span>
+                {% else %}
+                  <span class="badge bg-secondary">{{ et }}</span>
+                {% endif %}
+              </td>
+              <td><code>{{ log.vpn_ip or '—' }}</code></td>
+              <td><code class="text-muted">{{ log.real_ip or '—' }}</code></td>
+              <td>
+                {% if log.country and log.country not in ('Unknown','Local') %}
+                  <i class="fas fa-location-dot text-muted me-1"></i>{{ log.city }}, {{ log.country }}
+                {% else %}
+                  <span class="text-muted">—</span>
+                {% endif %}
+              </td>
+              <td class="text-muted">{{ log.notes or '—' }}</td>
+            </tr>
+            {% else %}
+            <tr>
+              <td colspan="6" class="text-center text-muted py-4">No activity recorded.</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+</div>
+{% endblock %}

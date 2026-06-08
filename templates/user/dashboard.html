@@ -1,0 +1,273 @@
+{% extends 'base.html' %}
+{% block title %}My VPN — VPN Manager{% endblock %}
+
+{% block content %}
+<div class="mb-4">
+  <h4 class="fw-bold mb-0 text-dark">
+    <i class="fas fa-house text-primary me-2"></i>My VPN Dashboard
+  </h4>
+  <p class="text-muted small mb-0">Welcome back, <strong>{{ user.username }}</strong></p>
+</div>
+
+<div class="row g-3">
+
+  <!-- ===== VPN Status Card ===== -->
+  <div class="col-md-7 col-lg-8">
+    <div class="card border-0 shadow-sm h-100">
+      <div class="card-header">
+        <i class="fas fa-network-wired text-primary me-2"></i>VPN Configuration
+      </div>
+      <div class="card-body">
+
+        {% if expired %}
+        <!-- EXPIRED -->
+        <div class="text-center py-4">
+          <div class="d-inline-flex align-items-center justify-content-center
+                      bg-danger bg-opacity-10 border border-danger rounded-circle mb-3"
+               style="width:80px;height:80px;">
+            <i class="fas fa-clock fa-2x text-danger"></i>
+          </div>
+          <h5 class="text-danger fw-bold">Access Expired</h5>
+          <p class="text-muted">
+            Your VPN access expired on
+            <strong class="text-dark">{{ user.expires_at | datetimefmt }}</strong>.<br>
+            Please contact an administrator to extend your access.
+          </p>
+        </div>
+
+        {% elif not peer %}
+        <!-- NO VPN CONFIGURED -->
+        <div class="text-center py-4">
+          <div class="d-inline-flex align-items-center justify-content-center
+                      bg-warning bg-opacity-10 border border-warning rounded-circle mb-3"
+               style="width:80px;height:80px;">
+            <i class="fas fa-plug-circle-plus fa-2x text-warning"></i>
+          </div>
+          <h5 class="fw-bold text-dark">No VPN Configured</h5>
+          <p class="text-muted mb-4">
+            Generate your personal WireGuard configuration to get started.<br>
+            Your credentials are unique and encrypted with a preshared key.
+          </p>
+          <form method="POST" action="{{ url_for('user.generate_vpn') }}">
+            <button type="submit" class="btn btn-primary btn-lg px-5 fw-semibold shadow-sm">
+              <i class="fas fa-key me-2"></i>Generate VPN Config
+            </button>
+          </form>
+        </div>
+
+        {% else %}
+        <!-- VPN ACTIVE -->
+        <div class="row g-3 align-items-center">
+          <div class="col-md-auto text-center">
+            <div class="d-inline-flex align-items-center justify-content-center
+                        bg-success bg-opacity-10 border border-success rounded-circle mb-2"
+                 style="width:80px;height:80px;">
+              <i class="fas fa-shield-halved fa-2x text-success"></i>
+            </div>
+            <div class="small">
+              <span class="badge bg-success-subtle text-success border border-success-subtle px-3 py-2">
+                <span class="pulse-dot bg-success me-1"></span>VPN Ready
+              </span>
+            </div>
+          </div>
+
+          <div class="col">
+            <div class="row g-2 small">
+              <div class="col-6 col-sm-4">
+                <div class="text-muted mb-1">VPN IP Address</div>
+                <code class="fs-6 fw-bold">{{ peer.vpn_ip }}</code>
+              </div>
+              <div class="col-6 col-sm-4">
+                <div class="text-muted mb-1">DNS Servers</div>
+                <code>{{ peer.dns }}</code>
+              </div>
+              <div class="col-6 col-sm-4">
+                <div class="text-muted mb-1">Server Endpoint</div>
+                <code>{{ peer.server_endpoint }}</code>
+              </div>
+              <div class="col-6 col-sm-4">
+                <div class="text-muted mb-1">Allowed IPs</div>
+                <code>0.0.0.0/0</code>
+              </div>
+              <div class="col-6 col-sm-4">
+                <div class="text-muted mb-1">Config Downloaded</div>
+                {% if peer.config_downloaded %}
+                  <span class="text-success fw-semibold"><i class="fas fa-check me-1"></i>Yes</span>
+                {% else %}
+                  <span class="text-warning fw-semibold">
+                    <i class="fas fa-triangle-exclamation me-1"></i>Not yet
+                  </span>
+                {% endif %}
+              </div>
+              <div class="col-6 col-sm-4">
+                <div class="text-muted mb-1">Generated</div>
+                <span class="text-dark">{{ peer.created_at | datetimefmt }}</span>
+              </div>
+            </div>
+
+            <div class="mt-3">
+              <a href="{{ url_for('user.download_config') }}"
+                 class="btn btn-success fw-semibold shadow-sm">
+                <i class="fas fa-download me-2"></i>Download .conf File
+              </a>
+            </div>
+          </div>
+        </div>
+
+        <!-- Setup guide -->
+        <div class="accordion accordion-flush mt-4" id="setupGuide">
+          <div class="accordion-item border rounded">
+            <h2 class="accordion-header">
+              <button class="accordion-button collapsed bg-light text-dark py-2 small fw-semibold rounded"
+                      type="button" data-bs-toggle="collapse" data-bs-target="#guideBody">
+                <i class="fas fa-circle-question me-2 text-primary"></i>
+                How to connect with WireGuard
+              </button>
+            </h2>
+            <div id="guideBody" class="accordion-collapse collapse">
+              <div class="accordion-body text-muted small bg-light rounded-bottom">
+                <ol class="mb-0">
+                  <li>Download the <strong class="text-dark">.conf file</strong> above.</li>
+                  <li>Install the
+                    <a href="https://www.wireguard.com/install/" target="_blank" class="text-primary">
+                      WireGuard client
+                    </a> for your OS (Windows / macOS / Linux / Android / iOS).
+                  </li>
+                  <li>Open WireGuard → <strong class="text-dark">Add Tunnel</strong> → select your <code>.conf</code> file.</li>
+                  <li>Click <strong class="text-dark">Activate</strong> — you're connected!</li>
+                  <li>
+                    Visit <a href="https://ifconfig.me" target="_blank" class="text-primary">ifconfig.me</a>
+                    to verify your VPN IP appears.
+                  </li>
+                </ol>
+              </div>
+            </div>
+          </div>
+        </div>
+        {% endif %}
+
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== Sidebar ===== -->
+  <div class="col-md-5 col-lg-4">
+
+    <!-- Expiry card -->
+    <div class="card border-0 shadow-sm mb-3
+      {% if expired %}border-danger border{% elif days_left <= 2 %}border-warning border{% endif %}">
+      <div class="card-header">
+        <i class="fas fa-calendar-clock me-2
+          {% if expired %}text-danger{% elif days_left <= 2 %}text-warning{% else %}text-success{% endif %}">
+        </i>Account Expiry
+      </div>
+      <div class="card-body text-center py-3">
+        <div class="display-5 fw-bold
+          {% if expired %}text-danger{% elif days_left <= 2 %}text-warning{% else %}text-success{% endif %}">
+          {% if expired %}0{% else %}{{ days_left }}{% endif %}
+        </div>
+        <div class="text-muted small">days remaining</div>
+        <div class="small mt-2 text-dark">
+          Expires: <strong>{{ user.expires_at | datetimefmt('%d %b %Y') }}</strong>
+        </div>
+        {% if expired %}
+          <div class="alert alert-danger py-1 mt-2 small mb-0">
+            Contact admin to extend access.
+          </div>
+        {% elif days_left <= 3 %}
+          <div class="alert alert-warning py-1 mt-2 small mb-0">
+            <i class="fas fa-triangle-exclamation me-1"></i>Expiring soon!
+          </div>
+        {% endif %}
+      </div>
+    </div>
+
+    <!-- Account info -->
+    <div class="card border-0 shadow-sm">
+      <div class="card-header">
+        <i class="fas fa-circle-info text-muted me-2"></i>Account Info
+      </div>
+      <ul class="list-group list-group-flush small">
+        <li class="list-group-item d-flex justify-content-between py-3">
+          <span class="text-muted">Username</span>
+          <strong class="text-dark">{{ user.username }}</strong>
+        </li>
+        <li class="list-group-item d-flex justify-content-between py-3">
+          <span class="text-muted">Email</span>
+          <span class="text-dark">{{ user.email }}</span>
+        </li>
+        <li class="list-group-item d-flex justify-content-between py-3">
+          <span class="text-muted">Member since</span>
+          <span class="text-dark">{{ user.created_at | datetimefmt('%d %b %Y') }}</span>
+        </li>
+        <li class="list-group-item d-flex justify-content-between py-3">
+          <span class="text-muted">VPN Status</span>
+          {% if expired %}
+            <span class="text-danger fw-semibold">Expired</span>
+          {% elif peer %}
+            <span class="text-success fw-semibold">Configured</span>
+          {% else %}
+            <span class="text-warning fw-semibold">Not set up</span>
+          {% endif %}
+        </li>
+      </ul>
+    </div>
+
+  </div>
+
+  <!-- ===== Recent activity ===== -->
+  {% if logs %}
+  <div class="col-12">
+    <div class="card border-0 shadow-sm">
+      <div class="card-header">
+        <i class="fas fa-clock-rotate-left text-warning me-2"></i>Recent Activity
+      </div>
+      <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0 small">
+          <thead>
+            <tr>
+              <th class="ps-3">Time</th>
+              <th>Event</th>
+              <th>Location</th>
+              <th>Real IP</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for log in logs %}
+            <tr>
+              <td class="ps-3 text-muted text-nowrap">{{ log.event_time | datetimefmt }}</td>
+              <td>
+                {% set et = log.event_type %}
+                {% if et == 'key_generated' %}
+                  <span class="badge bg-primary-subtle text-primary border border-primary-subtle">Key Generated</span>
+                {% elif et == 'config_download' %}
+                  <span class="badge bg-info-subtle text-info border border-info-subtle">Config Downloaded</span>
+                {% elif et == 'connect' %}
+                  <span class="badge bg-success-subtle text-success border border-success-subtle">Connected</span>
+                {% elif et == 'disconnect' %}
+                  <span class="badge bg-secondary-subtle text-secondary border border-secondary-subtle">Disconnected</span>
+                {% elif et == 'revoked' %}
+                  <span class="badge bg-danger-subtle text-danger border border-danger-subtle">Revoked</span>
+                {% else %}
+                  <span class="badge bg-secondary">{{ et }}</span>
+                {% endif %}
+              </td>
+              <td>
+                {% if log.country and log.country not in ('Unknown', 'Local') %}
+                  <i class="fas fa-location-dot text-muted me-1"></i>{{ log.city }}, {{ log.country }}
+                {% else %}
+                  <span class="text-muted">{{ log.country or '—' }}</span>
+                {% endif %}
+              </td>
+              <td><code class="text-muted">{{ log.real_ip or '—' }}</code></td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+  {% endif %}
+
+</div>
+{% endblock %}

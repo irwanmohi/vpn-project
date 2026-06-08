@@ -1,0 +1,117 @@
+{% extends 'base.html' %}
+{% block title %}Create User — VPN Manager{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-md-8 col-lg-6">
+
+    <div class="d-flex align-items-center gap-2 mb-4">
+      <a href="{{ url_for('admin.users') }}" class="btn btn-outline-secondary btn-sm">
+        <i class="fas fa-arrow-left"></i>
+      </a>
+      <div>
+        <h4 class="fw-bold mb-0 text-dark">
+          <i class="fas fa-user-plus text-primary me-2"></i>Create New User
+        </h4>
+        <p class="text-muted small mb-0">Admin-generated account with custom expiry</p>
+      </div>
+    </div>
+
+    <div class="card border-0 shadow-sm">
+      <div class="card-body p-4">
+        <form method="POST" action="{{ url_for('admin.create_user') }}" novalidate>
+
+          <div class="row g-3">
+
+            <div class="col-12">
+              <label for="full_name" class="form-label fw-semibold">Full Name</label>
+              <input type="text" class="form-control"
+                     id="full_name" name="full_name"
+                     placeholder="John Doe" />
+            </div>
+
+            <div class="col-md-6">
+              <label for="username" class="form-label fw-semibold">
+                Username <span class="text-danger">*</span>
+              </label>
+              <input type="text" class="form-control"
+                     id="username" name="username"
+                     placeholder="johndoe" required />
+            </div>
+
+            <div class="col-md-6">
+              <label for="email" class="form-label fw-semibold">
+                Email <span class="text-danger">*</span>
+              </label>
+              <input type="email" class="form-control"
+                     id="email" name="email"
+                     placeholder="john@example.com" required />
+            </div>
+
+            <div class="col-md-6">
+              <label for="password" class="form-label fw-semibold">
+                Password <span class="text-danger">*</span>
+              </label>
+              <div class="input-group">
+                <input type="text" class="form-control font-monospace"
+                       id="password" name="password"
+                       placeholder="Set a temporary password" required />
+                <button class="btn btn-outline-secondary" type="button"
+                        id="genPw" title="Generate random password">
+                  <i class="fas fa-rotate"></i>
+                </button>
+              </div>
+              <div class="form-text">Share this with the user so they can log in.</div>
+            </div>
+
+            <div class="col-md-6">
+              <label for="expiry_days" class="form-label fw-semibold">
+                Access Duration (days)
+              </label>
+              <input type="number" class="form-control"
+                     id="expiry_days" name="expiry_days"
+                     value="{{ default_days }}" min="1" max="365" />
+              <div class="form-text">Default: {{ default_days }} days from now.</div>
+            </div>
+
+          </div>
+
+          <!-- Expiry preview -->
+          <div class="alert alert-light border mt-3 py-2 small" id="expiryPreview"></div>
+
+          <div class="d-flex gap-2 mt-4">
+            <button type="submit" class="btn btn-primary fw-semibold px-4">
+              <i class="fas fa-user-plus me-2"></i>Create User
+            </button>
+            <a href="{{ url_for('admin.users') }}" class="btn btn-outline-secondary">Cancel</a>
+          </div>
+
+        </form>
+      </div>
+    </div>
+
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  function updatePreview() {
+    const days = parseInt(document.getElementById('expiry_days').value) || 0;
+    const date = new Date();
+    date.setDate(date.getDate() + days);
+    document.getElementById('expiryPreview').innerHTML =
+      `<i class="fas fa-calendar-check me-2 text-primary"></i>
+       Expires on <strong>${date.toDateString()}</strong> (in ${days} day${days !== 1 ? 's' : ''}).`;
+  }
+  document.getElementById('expiry_days').addEventListener('input', updatePreview);
+  updatePreview();
+
+  document.getElementById('genPw').addEventListener('click', function () {
+    const chars = 'ABCDEFGHJKMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789!@#$';
+    let pw = '';
+    for (let i = 0; i < 12; i++) pw += chars[Math.floor(Math.random() * chars.length)];
+    document.getElementById('password').value = pw;
+  });
+</script>
+{% endblock %}

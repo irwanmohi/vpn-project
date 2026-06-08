@@ -1,0 +1,170 @@
+{% extends 'base.html' %}
+{% block title %}Connection Logs — VPN Manager{% endblock %}
+
+{% block head %}
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+{% endblock %}
+
+{% block content %}
+<div class="d-flex align-items-center justify-content-between mb-4 flex-wrap gap-2">
+  <div>
+    <h4 class="fw-bold mb-0 text-dark"><i class="fas fa-scroll text-primary me-2"></i>Connection Logs</h4>
+    <p class="text-muted small mb-0">{{ total }} total event(s)</p>
+  </div>
+</div>
+
+<!-- ===== Filter bar ===== -->
+<form method="GET" action="{{ url_for('admin.logs') }}"
+      class="card border-0 shadow-sm mb-4">
+  <div class="card-body py-3">
+    <div class="row g-2 align-items-end">
+      <div class="col-md-4">
+        <label class="form-label small fw-semibold text-muted">Event Type</label>
+        <select name="event" class="form-select form-select-sm">
+          <option value="">All Events</option>
+          {% for ev in ['key_generated','config_download','connect','disconnect','revoked','expired'] %}
+          <option value="{{ ev }}" {% if event_filter == ev %}selected{% endif %}>
+            {{ ev | replace('_',' ') | title }}
+          </option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="col-md-4">
+        <label class="form-label small fw-semibold text-muted">Username</label>
+        <input type="text" name="user" value="{{ user_filter }}"
+               class="form-control form-control-sm"
+               placeholder="Search username…" />
+      </div>
+      <div class="col-md-4 d-flex gap-2">
+        <button type="submit" class="btn btn-primary btn-sm flex-fill">
+          <i class="fas fa-filter me-1"></i>Filter
+        </button>
+        <a href="{{ url_for('admin.logs') }}" class="btn btn-outline-secondary btn-sm">
+          <i class="fas fa-rotate"></i>
+        </a>
+      </div>
+    </div>
+  </div>
+</form>
+
+<!-- ===== Leaflet map ===== -->
+<div class="card border-0 shadow-sm mb-4">
+  <div class="card-header">
+    <i class="fas fa-map-location-dot text-primary me-2"></i>Connection Geolocation Map
+    <span class="badge bg-secondary ms-2">{{ map_points | length }} points</span>
+  </div>
+  <div class="card-body p-0">
+    <div id="geoMap" style="height:380px; border-radius:0 0 .5rem .5rem;"></div>
+  </div>
+</div>
+
+<!-- ===== Logs table ===== -->
+<div class="card border-0 shadow-sm">
+  <div class="card-body p-0">
+    <div class="table-responsive">
+      <table class="table table-hover align-middle mb-0 small">
+        <thead>
+          <tr>
+            <th class="ps-3">#</th>
+            <th>Time</th>
+            <th>User</th>
+            <th>VPN IP</th>
+            <th>Real IP</th>
+            <th>Location</th>
+            <th>Event</th>
+            <th>Traffic</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for log in logs %}
+          <tr>
+            <td class="ps-3 text-muted">{{ (page - 1) * 20 + loop.index }}</td>
+            <td class="text-muted text-nowrap">{{ log.event_time | datetimefmt }}</td>
+            <td class="fw-semibold text-dark">{{ log.username }}</td>
+            <td><code>{{ log.vpn_ip or '—' }}</code></td>
+            <td><code class="text-muted">{{ log.real_ip or '—' }}</code></td>
+            <td>
+              {% if log.country and log.country not in ('Unknown','Local') %}
+                <i class="fas fa-location-dot text-muted me-1"></i>
+                {{ log.city }}, {{ log.country }}
+              {% else %}
+                <span class="text-muted">{{ log.country or '—' }}</span>
+              {% endif %}
+            </td>
+            <td>
+              {% set et = log.event_type %}
+              {% if et == 'key_generated' %}
+                <span class="badge bg-primary-subtle text-primary border border-primary-subtle">Generated</span>
+              {% elif et == 'config_download' %}
+                <span class="badge bg-info-subtle text-info border border-info-subtle">Downloaded</span>
+              {% elif et == 'connect' %}
+                <span class="badge bg-success-subtle text-success border border-success-subtle">Connected</span>
+              {% elif et == 'disconnect' %}
+                <span class="badge bg-secondary-subtle text-secondary border border-secondary-subtle">Disconnected</span>
+              {% elif et == 'revoked' %}
+                <span class="badge bg-danger-subtle text-danger border border-danger-subtle">Revoked</span>
+              {% elif et == 'expired' %}
+                <span class="badge bg-warning-subtle text-warning border border-warning-subtle">Expired</span>
+              {% else %}
+                <span class="badge bg-secondary">{{ et }}</span>
+              {% endif %}
+            </td>
+            <td class="text-muted text-nowrap">
+              {% if log.bytes_sent or log.bytes_received %}
+                <i class="fas fa-arrow-up text-success me-1"></i>{{ log.bytes_sent | bytes_fmt }}
+                <i class="fas fa-arrow-down text-info ms-1 me-1"></i>{{ log.bytes_received | bytes_fmt }}
+              {% else %}—{% endif %}
+            </td>
+          </tr>
+          {% else %}
+          <tr>
+            <td colspan="8" class="text-center text-muted py-5">
+              <i class="fas fa-scroll fa-2x mb-3 d-block opacity-25"></i>
+              No logs found matching your filters.
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  {% if total_pages > 1 %}
+  <div class="card-footer d-flex justify-content-between align-items-center">
+    <span class="text-muted small">Page {{ page }} of {{ total_pages }}</span>
+    <nav>
+      <ul class="pagination pagination-sm mb-0">
+        {% if page > 1 %}
+        <li class="page-item">
+          <a class="page-link" href="?page={{ page - 1 }}&event={{ event_filter }}&user={{ user_filter }}">
+            <i class="fas fa-chevron-left"></i>
+          </a>
+        </li>
+        {% endif %}
+        {% for p in range([1, page - 2] | max, [total_pages + 1, page + 3] | min) %}
+        <li class="page-item {% if p == page %}active{% endif %}">
+          <a class="page-link" href="?page={{ p }}&event={{ event_filter }}&user={{ user_filter }}">{{ p }}</a>
+        </li>
+        {% endfor %}
+        {% if page < total_pages %}
+        <li class="page-item">
+          <a class="page-link" href="?page={{ page + 1 }}&event={{ event_filter }}&user={{ user_filter }}">
+            <i class="fas fa-chevron-right"></i>
+          </a>
+        </li>
+        {% endif %}
+      </ul>
+    </nav>
+  </div>
+  {% endif %}
+</div>
+
+<script>
+  const MAP_POINTS = {{ map_points | tojson }};
+</script>
+{% endblock %}
+
+{% block scripts %}
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="{{ url_for('static', filename='js/map.js') }}"></script>
+{% endblock %}
