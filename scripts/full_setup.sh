@@ -548,18 +548,18 @@ fi
 # =============================================================
 banner "PHASE 11 — Cron Job (Auto-Expire)"
 
-CRON_JOB="*/5 * * * * ${DEPLOY_PATH}/scripts/cron_expiry.sh >> /var/log/vpn_expiry.log 2>&1"
-CRON_FILE="/etc/cron.d/vpn-expiry"
+CRON_FILE="/etc/cron.d/vpn-manager"
 
 cat > "$CRON_FILE" <<CRON
-# VPN Manager — auto-revoke expired users every 5 minutes
+# VPN Manager cron jobs
 SHELL=/bin/bash
 PATH=/usr/local/sbin:/usr/local/bin:/sbin:/bin:/usr/sbin:/usr/bin
-${CRON_JOB}
+*/5 * * * * root ${DEPLOY_PATH}/scripts/cron_expiry.sh >> /var/log/vpn_expiry.log 2>&1
+* * * * * root ${DEPLOY_PATH}/scripts/cron_monitor.sh >> /var/log/vpn_monitor.log 2>&1
 CRON
 
 chmod 644 "$CRON_FILE"
-ok "Cron job installed at $CRON_FILE"
+ok "Cron jobs installed at $CRON_FILE"
 
 # =============================================================
 #  FINAL SUMMARY
