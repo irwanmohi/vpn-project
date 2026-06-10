@@ -98,6 +98,66 @@
 
 </div>
 
+<!-- ===== Pending extension requests ===== -->
+{% if ext_requests %}
+<div class="card border-warning shadow-sm mb-4">
+  <div class="card-header bg-warning-subtle">
+    <i class="fas fa-hourglass-half text-warning me-2"></i>
+    Pending Extension Requests
+    <span class="badge bg-warning text-dark ms-2">{{ ext_requests | length }}</span>
+  </div>
+  <div class="card-body p-0">
+    <div class="table-responsive">
+      <table class="table table-hover align-middle mb-0 small">
+        <thead>
+          <tr>
+            <th class="ps-3">User</th>
+            <th>Requested</th>
+            <th>Current Expiry</th>
+            <th class="text-center">Approve &amp; Extend</th>
+            <th class="text-center" style="width:80px">Reject</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for r in ext_requests %}
+          <tr>
+            <td class="ps-3 fw-semibold text-dark">{{ r.username }}</td>
+            <td class="text-muted">{{ r.requested_at | datetimefmt }}</td>
+            <td>
+              {% if r.expires_at < now %}
+                <span class="text-danger fw-semibold">{{ r.expires_at | datetimefmt('%Y-%m-%d') }} (expired)</span>
+              {% else %}
+                {{ r.expires_at | datetimefmt('%Y-%m-%d') }}
+              {% endif %}
+            </td>
+            <td class="text-center">
+              <div class="d-flex gap-1 justify-content-center flex-wrap">
+                {% for d in [3, 7, 14, 30] %}
+                <form method="POST" action="{{ url_for('admin.approve_extension', req_id=r.id) }}">
+                  <input type="hidden" name="days" value="{{ d }}" />
+                  <button type="submit" class="btn btn-outline-success btn-sm px-2 py-0"
+                          style="font-size:.75rem">+{{ d }}d</button>
+                </form>
+                {% endfor %}
+              </div>
+            </td>
+            <td class="text-center">
+              <form method="POST" action="{{ url_for('admin.reject_extension', req_id=r.id) }}"
+                    onsubmit="return confirm('Reject extension request from {{ r.username }}?')">
+                <button type="submit" class="btn btn-outline-danger btn-sm" title="Reject">
+                  <i class="fas fa-xmark"></i>
+                </button>
+              </form>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endif %}
+
 <!-- ===== Connections chart ===== -->
 <div class="card border-0 shadow-sm mb-4">
   <div class="card-header">

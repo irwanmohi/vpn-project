@@ -66,16 +66,14 @@ while IFS=$'\t' read -r PUBLIC_KEY VPN_IP PEER_ID USER_ID USERNAME; do
         echo "  [WG] WARN: Could not remove peer — may already be gone."
     fi
 
+    # NOTE: users.is_active stays 1 — expired users may still log in to
+    # request an extension. is_active=0 is reserved for admin revocation.
     $MYSQL_CMD <<SQL
         START TRANSACTION;
 
         UPDATE vpn_peers
            SET is_active = 0
          WHERE id = $PEER_ID;
-
-        UPDATE users
-           SET is_active = 0
-         WHERE id = $USER_ID;
 
         UPDATE ip_pool
            SET is_allocated = 0,

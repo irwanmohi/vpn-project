@@ -90,12 +90,14 @@ def login():
                 (username,), one=True,
             )
             if row and check_password_hash(row['password_hash'], password):
-                if row['expires_at'] < datetime.now():
-                    flash('Your account has expired. Contact an administrator.', 'danger')
-                    return render_template('login.html')
                 _clear_failures(username)
                 _set_session(row['id'], row['username'], 'user')
-                flash(f"Welcome, {row['username']}!", 'success')
+                # Expired users may still log in (VPN peer is already removed)
+                # so they can submit an extension request from the dashboard.
+                if row['expires_at'] < datetime.now():
+                    flash('Your access has expired — you can request an extension below.', 'warning')
+                else:
+                    flash(f"Welcome, {row['username']}!", 'success')
                 return redirect(url_for('user.dashboard'))
 
         _record_failure(username)

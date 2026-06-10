@@ -30,9 +30,25 @@
           <h5 class="text-danger fw-bold">Access Expired</h5>
           <p class="text-muted">
             Your VPN access expired on
-            <strong class="text-dark">{{ user.expires_at | datetimefmt }}</strong>.<br>
-            Please contact an administrator to extend your access.
+            <strong class="text-dark">{{ user.expires_at | datetimefmt }}</strong>.
           </p>
+          {% if pending_request %}
+            <div class="alert alert-info d-inline-block py-2 px-4">
+              <i class="fas fa-hourglass-half me-2"></i>
+              Extension request submitted on
+              <strong>{{ pending_request.requested_at | datetimefmt }}</strong> —
+              waiting for admin approval.
+            </div>
+          {% else %}
+            <form method="POST" action="{{ url_for('user.request_extension') }}">
+              <button type="submit" class="btn btn-primary btn-lg px-5 fw-semibold shadow-sm">
+                <i class="fas fa-rotate me-2"></i>Request Extension
+              </button>
+            </form>
+            <p class="text-muted small mt-2 mb-0">
+              An administrator will review your request and restore your access.
+            </p>
+          {% endif %}
         </div>
 
         {% elif not peer %}
@@ -199,14 +215,28 @@
         <div class="small mt-2 text-dark">
           Expires: <strong>{{ user.expires_at | datetimefmt('%d %b %Y') }}</strong>
         </div>
-        {% if expired %}
-          <div class="alert alert-danger py-1 mt-2 small mb-0">
-            Contact admin to extend access.
+        {% if pending_request %}
+          <div class="alert alert-info py-1 mt-2 small mb-0">
+            <i class="fas fa-hourglass-half me-1"></i>Extension request pending.
           </div>
+        {% elif expired %}
+          <div class="alert alert-danger py-1 mt-2 small mb-2">
+            Your access has expired.
+          </div>
+          <form method="POST" action="{{ url_for('user.request_extension') }}">
+            <button type="submit" class="btn btn-primary btn-sm w-100 fw-semibold">
+              <i class="fas fa-rotate me-1"></i>Request Extension
+            </button>
+          </form>
         {% elif days_left <= 3 %}
-          <div class="alert alert-warning py-1 mt-2 small mb-0">
+          <div class="alert alert-warning py-1 mt-2 small mb-2">
             <i class="fas fa-triangle-exclamation me-1"></i>Expiring soon!
           </div>
+          <form method="POST" action="{{ url_for('user.request_extension') }}">
+            <button type="submit" class="btn btn-outline-primary btn-sm w-100 fw-semibold">
+              <i class="fas fa-rotate me-1"></i>Request Extension
+            </button>
+          </form>
         {% endif %}
       </div>
     </div>

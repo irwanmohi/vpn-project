@@ -378,6 +378,8 @@ sudo systemctl is-active nginx          # should print: active
 - One-click WireGuard config generation
 - Download named `.conf` file or scan QR code with the mobile app
 - Personal traffic counters (downloaded / uploaded)
+- Self-service extension requests — expired users can still log in
+  and request renewal, pending admin approval
 - View own activity log and connection history
 - Fully responsive — works on phones
 
@@ -389,6 +391,7 @@ sudo systemctl is-active nginx          # should print: active
 - Per-user traffic usage (download / upload)
 - Create users with custom expiry duration
 - Extend access (1 / 3 / 7 / 14 / 30 days)
+- Approve / reject user extension requests from the dashboard
 - Reset user passwords (random generated, shown once)
 - Revoke access (removes WireGuard peer immediately)
 - Paginated connection logs with event and username filters
@@ -449,6 +452,7 @@ sudo systemctl is-active nginx          # should print: active
 | `connection_logs` | All VPN events with geolocation data       |
 | `ip_pool`         | 10.8.0.2–254 IP allocation pool            |
 | `failed_logins`   | Login attempts for rate limiting           |
+| `extension_requests` | User renewal requests pending admin action |
 
 ---
 
@@ -466,12 +470,15 @@ sudo systemctl is-active nginx          # should print: active
 | POST   | `/user/vpn/generate`       | user  | Generate WG config       |
 | GET    | `/user/vpn/download`       | user  | Download `.conf` file    |
 | GET    | `/user/vpn/qrcode`         | user  | Config as QR code (PNG)  |
+| POST   | `/user/extension/request`  | user  | Request access extension |
 | GET    | `/admin/`                  | admin | Admin dashboard + chart  |
 | GET    | `/admin/users`             | admin | User list                |
 | GET    | `/admin/users/create`      | admin | Create user form         |
 | POST   | `/admin/users/create`      | admin | Create user              |
 | POST   | `/admin/users/<id>/extend` | admin | Extend user expiry       |
 | POST   | `/admin/users/<id>/reset-password` | admin | Reset user password |
+| POST   | `/admin/extensions/<id>/approve` | admin | Approve extension request |
+| POST   | `/admin/extensions/<id>/reject`  | admin | Reject extension request  |
 | POST   | `/admin/users/<id>/revoke` | admin | Revoke user access       |
 | GET    | `/admin/logs`              | admin | Logs + live connection map |
 | GET    | `/admin/peer-stats`        | admin | Live peer stats page     |

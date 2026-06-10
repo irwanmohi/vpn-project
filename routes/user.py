@@ -42,10 +42,17 @@ def dashboard():
     expired = user['expires_at'] < now
     days_left = max(0, (user['expires_at'] - now).days)
 
+    pending_request = query(
+        "SELECT * FROM extension_requests WHERE user_id=%s AND status='pending'",
+        (uid,), one=True,
+    )
+    can_request = (expired or days_left <= 3) and not pending_request
+
     return render_template(
         'user/dashboard.html',
         user=user, peer=peer, logs=logs,
         now=now, expired=expired, days_left=days_left,
+        pending_request=pending_request, can_request=can_request,
     )
 
 
@@ -143,6 +150,29 @@ def download_config():
     response.headers['Content-Type']        = 'application/octet-stream'
     response.headers['Content-Disposition'] = f'attachment; filename="{username}-wg.conf"'
     return response
+
+
+@user_bp.route('/extension/request', methods=['POST'])
+@_user_only
+def request_extension():
+    uid  = session['user_id']
+    user = query("SELECT * FROM users WHERE id=%s", (uid,), one=True)
+
+    now       = datetime.now()
+    days_left = (user['expires_at'] - now).days
+
+    if user['expires_at'] > now and days_left > 3:
+        flash('You can request an extension once your access is within 3 days of expiry.', 'info')
+        return redirect(url_for('user.dashboard'))
+
+    if query("SELECT id FROM extension_requests WHERE user_id=%s AND status='pending'",
+             (uid,), one=True):
+        flash('You already have a pending extension request.', 'info')
+        return redirect(url_for('user.dashboard'))
+
+    query("INSERT INTO extension_requests (user_id) VALUES (%s)", (uid,), commit=True)
+    flash('Extension request submitted — an administrator will review it shortly.', 'success')
+    return redirect(url_for('user.dashboard'))
 
 
 @user_bp.route('/vpn/qrcode')

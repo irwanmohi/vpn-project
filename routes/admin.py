@@ -60,10 +60,17 @@ def dashboard():
         chart_labels.append(day.strftime('%d %b'))
         chart_values.append(counts.get(day.strftime('%Y-%m-%d'), 0))
 
+    ext_requests = query(
+        "SELECT er.id, er.requested_at, u.username, u.expires_at, u.id AS user_id "
+        "FROM extension_requests er JOIN users u ON er.user_id=u.id "
+        "WHERE er.status='pending' ORDER BY er.requested_at"
+    )
+
     return render_template(
         'admin/dashboard.html',
         stats=stats, recent_logs=recent_logs,
         chart_labels=chart_labels, chart_values=chart_values,
+        ext_requests=ext_requests, now=datetime.now(),
     )
 
 
@@ -143,6 +150,62 @@ def extend_user(user_id):
     )
     flash(f'Extended {user["username"]}\'s access by {days} day(s) → expires {new_expiry.strftime("%Y-%m-%d")}.', 'success')
     return redirect(url_for('admin.users'))
+
+
+@admin_bp.route('/extensions/<int:req_id>/approve', methods=['POST'])
+@_admin
+def approve_extension(req_id):
+    days = int(request.form.get('days', 7))
+    req  = query(
+        "SELECT * FROM extension_requests WHERE id=%s AND status='pending'",
+        (req_id,), one=True,
+    )
+    if not req:
+        flash('Request not found or already resolved.', 'warning')
+        return redirect(url_for('admin.dashboard'))
+
+    user = query("SELECT * FROM users WHERE id=%s", (req['user_id'],), one=True)
+
+    base       = max(datetime.now(), user['expires_at'])
+    new_expiry = base + timedelta(days=days)
+    query(
+        "UPDATE users SET expires_at=%s, is_active=1, expiry_notified=0 WHERE id=%s",
+        (new_expiry, user['id']), commit=True,
+    )
+    query(
+        "UPDATE extension_requests "
+        "SET status='approved', days_granted=%s, resolved_at=NOW(), resolved_by=%s "
+        "WHERE id=%s",
+        (days, session['user_id'], req_id), commit=True,
+    )
+    flash(
+        f'Approved: {user["username"]} extended by {days} day(s) '
+        f'→ expires {new_expiry.strftime("%Y-%m-%d")}.',
+        'success',
+    )
+    return redirect(url_for('admin.dashboard'))
+
+
+@admin_bp.route('/extensions/<int:req_id>/reject', methods=['POST'])
+@_admin
+def reject_extension(req_id):
+    req = query(
+        "SELECT er.*, u.username FROM extension_requests er "
+        "JOIN users u ON er.user_id=u.id "
+        "WHERE er.id=%s AND er.status='pending'",
+        (req_id,), one=True,
+    )
+    if not req:
+        flash('Request not found or already resolved.', 'warning')
+        return redirect(url_for('admin.dashboard'))
+
+    query(
+        "UPDATE extension_requests "
+        "SET status='rejected', resolved_at=NOW(), resolved_by=%s WHERE id=%s",
+        (session['user_id'], req_id), commit=True,
+    )
+    flash(f'Rejected extension request from {req["username"]}.', 'warning')
+    return redirect(url_for('admin.dashboard'))
 
 
 @admin_bp.route('/users/<int:user_id>/reset-password', methods=['POST'])
