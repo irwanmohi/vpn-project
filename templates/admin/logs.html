@@ -174,10 +174,9 @@
       var lat = parseFloat(this.dataset.lat);
       var lon = parseFloat(this.dataset.lon);
       if (!vpnMap || isNaN(lat) || isNaN(lon)) return;
-      document.getElementById('geoMap').scrollIntoView({ behavior: 'smooth', block: 'center' });
-      setTimeout(function () {
-        vpnMap.flyTo([lat, lon], 13, { animate: true, duration: 1.2 });
-      }, 400);
+      document.getElementById('geoMap').scrollIntoView({ behavior: 'smooth', block: 'start' });
+      vpnMap.invalidateSize();
+      vpnMap.flyTo([lat, lon], 13, { animate: true, duration: 1.2 });
     });
   });
 </script>

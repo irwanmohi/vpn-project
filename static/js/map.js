@@ -23,32 +23,21 @@ var vpnMap = null;
     maxZoom: 20,
   }).addTo(vpnMap);
 
-  var COLOURS = {
-    key_generated:   '#0d6efd',
-    config_download: '#0dcaf0',
-    connect:         '#198754',
-    disconnect:      '#6c757d',
-    revoked:         '#dc3545',
-    expired:         '#ffc107',
-  };
+  var PIN_SVG =
+    '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="26" viewBox="0 0 20 26">' +
+      '<ellipse cx="10" cy="24" rx="5" ry="2" fill="rgba(0,0,0,.4)"/>' +
+      '<path d="M10 0C6 0 2 3.5 2 8c0 6 8 18 8 18S18 14 18 8C18 3.5 14 0 10 0z"' +
+      '  fill="#198754" stroke="#fff" stroke-width="1.5"/>' +
+      '<circle cx="10" cy="8" r="3.5" fill="#fff" fill-opacity=".9"/>' +
+    '</svg>';
 
-  function makeIcon(eventType) {
-    var colour = COLOURS[eventType] || '#adb5bd';
-    var svg =
-      '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="26" viewBox="0 0 20 26">' +
-        '<ellipse cx="10" cy="24" rx="5" ry="2" fill="rgba(0,0,0,.4)"/>' +
-        '<path d="M10 0C6 0 2 3.5 2 8c0 6 8 18 8 18S18 14 18 8C18 3.5 14 0 10 0z"' +
-        '  fill="' + colour + '" stroke="#fff" stroke-width="1.5"/>' +
-        '<circle cx="10" cy="8" r="3.5" fill="#fff" fill-opacity=".9"/>' +
-      '</svg>';
-    return L.divIcon({
-      className: '',
-      html: svg,
-      iconSize:   [20, 26],
-      iconAnchor: [10, 26],
-      popupAnchor:[0, -26],
-    });
-  }
+  var PIN_ICON = L.divIcon({
+    className: '',
+    html: PIN_SVG,
+    iconSize:    [20, 26],
+    iconAnchor:  [10, 26],
+    popupAnchor: [0, -26],
+  });
 
   function escapeHtml(str) {
     return String(str)
@@ -60,7 +49,7 @@ var vpnMap = null;
 
   if (points.length === 0) {
     el.style.cssText = 'display:flex;align-items:center;justify-content:center;';
-    el.innerHTML = '<p style="color:#666;font-size:.85rem;">No geolocation data available yet.</p>';
+    el.innerHTML = '<p style="color:#666;font-size:.85rem;">No connection data available yet.</p>';
     return;
   }
 
@@ -70,44 +59,25 @@ var vpnMap = null;
     seen[key] = (seen[key] || 0) + 1;
     var jitter = (seen[key] - 1) * 0.003;
 
-    var label  = pt.event_type.replace(/_/g, ' ');
-    var colour = COLOURS[pt.event_type] || '#adb5bd';
-
     var popupHtml =
       '<div style="line-height:1.6">' +
         '<div style="font-weight:700;font-size:.9rem;margin-bottom:4px">' + escapeHtml(pt.username) + '</div>' +
         '<div><span style="display:inline-block;width:10px;height:10px;border-radius:50%;' +
-          'background:' + colour + ';margin-right:5px;vertical-align:middle;"></span>' +
-          '<em>' + label + '</em></div>' +
+          'background:#198754;margin-right:5px;vertical-align:middle;"></span>' +
+          '<em>connected</em></div>' +
         '<div style="color:#888;margin-top:3px;font-size:.8rem">📍 ' +
           escapeHtml(pt.city) + ', ' + escapeHtml(pt.country) + '</div>' +
       '</div>';
 
-    L.marker([pt.lat + jitter, pt.lon + jitter], { icon: makeIcon(pt.event_type) })
+    L.marker([pt.lat + jitter, pt.lon + jitter], { icon: PIN_ICON })
       .bindPopup(L.popup({ maxWidth: 220 }).setContent(popupHtml))
       .addTo(vpnMap);
   });
 
   try {
     var latLngs = points.map(function (p) { return [p.lat, p.lon]; });
-    vpnMap.fitBounds(L.latLngBounds(latLngs).pad(0.15));
+    vpnMap.fitBounds(L.latLngBounds(latLngs).pad(0.2));
   } catch (e) {
     vpnMap.setView([20, 0], 2);
   }
-
-  // Legend
-  var legend = L.control({ position: 'bottomright' });
-  legend.onAdd = function () {
-    var div = L.DomUtil.create('div');
-    div.style.cssText =
-      'background:#1e1e1e;border:1px solid #2a2a2a;border-radius:6px;' +
-      'padding:8px 12px;font-size:.75rem;color:#ccc;line-height:1.8;';
-    div.innerHTML = Object.entries(COLOURS).map(function (e) {
-      return '<span style="display:inline-block;width:10px;height:10px;border-radius:50%;' +
-        'background:' + e[1] + ';margin-right:5px;vertical-align:middle;"></span>' +
-        e[0].replace(/_/g, ' ') + '<br>';
-    }).join('');
-    return div;
-  };
-  legend.addTo(vpnMap);
 })();

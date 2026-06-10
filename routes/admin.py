@@ -189,21 +189,20 @@ def logs():
 
     # Map points — only rows with valid coordinates
     raw_points = query(
-        "SELECT cl.latitude, cl.longitude, cl.country, cl.city, "
-        "       cl.event_type, u.username "
+        "SELECT cl.latitude, cl.longitude, cl.country, cl.city, u.username "
         "FROM connection_logs cl "
         "JOIN users u ON cl.user_id=u.id "
-        "WHERE cl.latitude != 0 AND cl.longitude != 0 "
+        "WHERE cl.event_type = 'connect' "
+        "  AND cl.latitude != 0 AND cl.longitude != 0 "
         "ORDER BY cl.event_time DESC LIMIT 300"
     )
     map_points = [
         {
-            'lat':        float(r['latitude']),
-            'lon':        float(r['longitude']),
-            'country':    r['country'],
-            'city':       r['city'],
-            'event_type': r['event_type'],
-            'username':   r['username'],
+            'lat':      float(r['latitude']),
+            'lon':      float(r['longitude']),
+            'country':  r['country'],
+            'city':     r['city'],
+            'username': r['username'],
         }
         for r in raw_points
     ]
