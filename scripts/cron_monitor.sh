@@ -8,10 +8,8 @@ PROJECT_DIR="$(dirname "$SCRIPT_DIR")"
 
 ENV_FILE="$PROJECT_DIR/.env"
 if [[ -f "$ENV_FILE" ]]; then
-    set -o allexport
     # shellcheck disable=SC1090
-    source <(grep -E '^[A-Z_]+=.+' "$ENV_FILE")
-    set +o allexport
+    source <(grep -E '^[A-Z_]+=' "$ENV_FILE" | sed "s/=\(.*\)/='\1'/")
 fi
 
 DB_HOST="${MYSQL_HOST:-localhost}"
