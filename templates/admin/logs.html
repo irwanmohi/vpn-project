@@ -73,8 +73,7 @@
       <table class="table table-hover align-middle mb-0 small">
         <thead>
           <tr>
-            <th class="ps-3">#</th>
-            <th>Time</th>
+            <th class="ps-3">Time</th>
             <th>User</th>
             <th>VPN IP</th>
             <th>Real IP</th>
@@ -86,8 +85,7 @@
           {% for log in logs %}
           {% set flyable = (log.event_type == 'connect' and log.latitude and log.longitude and log.latitude != 0) %}
           <tr {% if flyable %}class="row-flyto" data-lat="{{ log.latitude }}" data-lon="{{ log.longitude }}" title="Click to view on map"{% endif %}>
-            <td class="ps-3 text-muted">{{ (page - 1) * 20 + loop.index }}</td>
-            <td class="text-muted text-nowrap">{{ log.event_time | datetimefmt }}</td>
+            <td class="ps-3 text-muted text-nowrap">{{ log.event_time | datetimefmt }}</td>
             <td class="fw-semibold text-dark">{{ log.username }}</td>
             <td><code>{{ log.vpn_ip or '—' }}</code></td>
             <td><code class="text-muted">{{ log.real_ip or '—' }}</code></td>
@@ -121,7 +119,7 @@
           </tr>
           {% else %}
           <tr>
-            <td colspan="8" class="text-center text-muted py-5">
+            <td colspan="6" class="text-center text-muted py-5">
               <i class="fas fa-scroll fa-2x mb-3 d-block opacity-25"></i>
               No logs found matching your filters.
             </td>

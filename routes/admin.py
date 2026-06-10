@@ -219,7 +219,8 @@ def logs():
     per_page = 20
     offset   = (page - 1) * per_page
 
-    event_filter = request.args.get('event', '').strip()
+    # Fresh page defaults to connect events; "All Events" submits event=''
+    event_filter = request.args.get('event', 'connect').strip()
     user_filter  = request.args.get('user',  '').strip()
 
     conditions = ['1=1']
