@@ -1,3 +1,4 @@
+import secrets
 from datetime import datetime, timedelta
 from functools import wraps
 
@@ -141,6 +142,31 @@ def extend_user(user_id):
         (new_expiry, user_id), commit=True,
     )
     flash(f'Extended {user["username"]}\'s access by {days} day(s) → expires {new_expiry.strftime("%Y-%m-%d")}.', 'success')
+    return redirect(url_for('admin.users'))
+
+
+@admin_bp.route('/users/<int:user_id>/reset-password', methods=['POST'])
+@_admin
+def reset_password(user_id):
+    user = query("SELECT * FROM users WHERE id=%s", (user_id,), one=True)
+    if not user:
+        flash('User not found.', 'danger')
+        return redirect(url_for('admin.users'))
+
+    alphabet     = 'ABCDEFGHJKMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789'
+    new_password = ''.join(secrets.choice(alphabet) for _ in range(12))
+
+    query(
+        "UPDATE users SET password_hash=%s WHERE id=%s",
+        (generate_password_hash(new_password), user_id), commit=True,
+    )
+    query("DELETE FROM failed_logins WHERE username=%s", (user['username'],), commit=True)
+
+    flash(
+        f'Password for "{user["username"]}" has been reset to:  {new_password}  '
+        f'— copy it now, it will not be shown again.',
+        'warning',
+    )
     return redirect(url_for('admin.users'))
 
 

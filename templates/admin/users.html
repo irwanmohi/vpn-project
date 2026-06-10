@@ -141,6 +141,14 @@
                   {% endfor %}
                 </div>
 
+                <form method="POST"
+                      action="{{ url_for('admin.reset_password', user_id=u.id) }}"
+                      onsubmit="return confirm('Reset password for {{ u.username }}? A new random password will be generated.')">
+                  <button type="submit" class="btn btn-outline-warning btn-sm" title="Reset password">
+                    <i class="fas fa-key"></i>
+                  </button>
+                </form>
+
                 {% if u.is_active %}
                 <form method="POST"
                       action="{{ url_for('admin.revoke_user', user_id=u.id) }}"
