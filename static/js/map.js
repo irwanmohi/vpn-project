@@ -1,16 +1,9 @@
-/**
- * VPN Manager — Leaflet.js Geolocation Map
- *
- * Expects a global `MAP_POINTS` array injected by the template:
- *   [{ lat, lon, country, city, event_type, username }, ...]
- */
 (function () {
   'use strict';
 
   const el = document.getElementById('geoMap');
   if (!el) return;
 
-  // ── Map setup ────────────────────────────────────────────
   const map = L.map('geoMap', {
     center: [20, 0],
     zoom: 2,
@@ -20,7 +13,6 @@
     attributionControl: true,
   });
 
-  // Dark tile layer
   L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
     attribution:
       '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> ' +
@@ -29,7 +21,6 @@
     maxZoom: 20,
   }).addTo(map);
 
-  // ── Marker colours by event type ─────────────────────────
   const COLOURS = {
     key_generated:   '#0d6efd',
     config_download: '#0dcaf0',
@@ -57,26 +48,30 @@
     });
   }
 
-  // ── Render points ─────────────────────────────────────────
+  function escapeHtml(str) {
+    return String(str)
+      .replace(/&/g, '&amp;').replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  }
+
   const points = (typeof MAP_POINTS !== 'undefined') ? MAP_POINTS : [];
 
   if (points.length === 0) {
-    el.style.display = 'flex';
-    el.style.alignItems = 'center';
-    el.style.justifyContent = 'center';
-    el.innerHTML =
-      '<p style="color:#666;font-size:.85rem;">No geolocation data available yet.</p>';
+    el.style.cssText = 'display:flex;align-items:center;justify-content:center;';
+    el.innerHTML = '<p style="color:#666;font-size:.85rem;">No geolocation data available yet.</p>';
     return;
   }
 
-  // Group overlapping points with a slight jitter so markers don't stack
+  // Store connect markers by "lat,lon" so rows can fly to them
+  const connectMarkers = {};
+
   const seen = {};
   points.forEach(function (pt) {
     const key = `${pt.lat.toFixed(2)},${pt.lon.toFixed(2)}`;
     seen[key] = (seen[key] || 0) + 1;
     const jitter = (seen[key] - 1) * 0.003;
 
-    const label = pt.event_type.replace(/_/g, ' ');
+    const label  = pt.event_type.replace(/_/g, ' ');
     const colour = COLOURS[pt.event_type] || '#adb5bd';
 
     const popup = L.popup({ maxWidth: 220, className: 'vpn-popup' }).setContent(`
@@ -95,12 +90,17 @@
         </div>
       </div>`);
 
-    L.marker([pt.lat + jitter, pt.lon + jitter], { icon: makeIcon(pt.event_type) })
+    const marker = L.marker([pt.lat + jitter, pt.lon + jitter], { icon: makeIcon(pt.event_type) })
       .bindPopup(popup)
       .addTo(map);
+
+    // Index the first connect marker at each location for row click
+    if (pt.event_type === 'connect') {
+      const ck = `${pt.lat.toFixed(4)},${pt.lon.toFixed(4)}`;
+      if (!connectMarkers[ck]) connectMarkers[ck] = marker;
+    }
   });
 
-  // Fit bounds to all markers
   try {
     const latLngs = points.map(p => [p.lat, p.lon]);
     map.fitBounds(L.latLngBounds(latLngs).pad(0.15));
@@ -108,7 +108,7 @@
     map.setView([20, 0], 2);
   }
 
-  // ── Legend ───────────────────────────────────────────────
+  // Legend
   const legend = L.control({ position: 'bottomright' });
   legend.onAdd = function () {
     const div = L.DomUtil.create('div');
@@ -124,10 +124,13 @@
   };
   legend.addTo(map);
 
-  // ── Helpers ──────────────────────────────────────────────
-  function escapeHtml(str) {
-    return String(str)
-      .replace(/&/g, '&amp;').replace(/</g, '&lt;')
-      .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
-  }
+  // Global function — called by table row click handlers
+  window.flyToMarker = function (lat, lon) {
+    el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    map.flyTo([lat, lon], 13, { animate: true, duration: 1.2 });
+    const ck = `${parseFloat(lat).toFixed(4)},${parseFloat(lon).toFixed(4)}`;
+    if (connectMarkers[ck]) {
+      setTimeout(function () { connectMarkers[ck].openPopup(); }, 1300);
+    }
+  };
 })();

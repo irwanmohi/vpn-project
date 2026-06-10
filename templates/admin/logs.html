@@ -3,6 +3,12 @@
 
 {% block head %}
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<style>
+  .row-flyto { cursor: pointer; }
+  .row-flyto:hover { background-color: rgba(25, 135, 84, 0.07) !important; }
+  .row-flyto:hover .fly-hint { opacity: 1; }
+  .fly-hint { opacity: 0; transition: opacity .2s; font-size: .7rem; color: #198754; }
+</style>
 {% endblock %}
 
 {% block content %}
@@ -76,7 +82,8 @@
         </thead>
         <tbody>
           {% for log in logs %}
-          <tr>
+          {% set flyable = (log.event_type == 'connect' and log.latitude and log.longitude and log.latitude != 0) %}
+          <tr {% if flyable %}class="row-flyto" data-lat="{{ log.latitude }}" data-lon="{{ log.longitude }}" title="Click to view on map"{% endif %}>
             <td class="ps-3 text-muted">{{ (page - 1) * 20 + loop.index }}</td>
             <td class="text-muted text-nowrap">{{ log.event_time | datetimefmt }}</td>
             <td class="fw-semibold text-dark">{{ log.username }}</td>
@@ -86,6 +93,7 @@
               {% if log.country and log.country not in ('Unknown','Local') %}
                 <i class="fas fa-location-dot text-muted me-1"></i>
                 {{ log.city }}, {{ log.country }}
+                {% if flyable %}<span class="fly-hint ms-1"><i class="fas fa-map-location-dot"></i> view map</span>{% endif %}
               {% else %}
                 <span class="text-muted">{{ log.country or '—' }}</span>
               {% endif %}
@@ -160,4 +168,13 @@
 {% block scripts %}
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script src="{{ url_for('static', filename='js/map.js') }}"></script>
+<script>
+  document.querySelectorAll('.row-flyto').forEach(function (row) {
+    row.addEventListener('click', function () {
+      var lat = parseFloat(this.dataset.lat);
+      var lon = parseFloat(this.dataset.lon);
+      if (window.flyToMarker) window.flyToMarker(lat, lon);
+    });
+  });
+</script>
 {% endblock %}
