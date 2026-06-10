@@ -173,7 +173,11 @@
     row.addEventListener('click', function () {
       var lat = parseFloat(this.dataset.lat);
       var lon = parseFloat(this.dataset.lon);
-      if (window.flyToMarker) window.flyToMarker(lat, lon);
+      if (!vpnMap || isNaN(lat) || isNaN(lon)) return;
+      document.getElementById('geoMap').scrollIntoView({ behavior: 'smooth', block: 'center' });
+      setTimeout(function () {
+        vpnMap.flyTo([lat, lon], 13, { animate: true, duration: 1.2 });
+      }, 400);
     });
   });
 </script>

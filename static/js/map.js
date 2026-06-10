@@ -1,10 +1,12 @@
+var vpnMap = null;
+
 (function () {
   'use strict';
 
-  const el = document.getElementById('geoMap');
+  var el = document.getElementById('geoMap');
   if (!el) return;
 
-  const map = L.map('geoMap', {
+  vpnMap = L.map('geoMap', {
     center: [20, 0],
     zoom: 2,
     minZoom: 1,
@@ -19,9 +21,9 @@
       '&copy; <a href="https://carto.com/">CARTO</a>',
     subdomains: 'abcd',
     maxZoom: 20,
-  }).addTo(map);
+  }).addTo(vpnMap);
 
-  const COLOURS = {
+  var COLOURS = {
     key_generated:   '#0d6efd',
     config_download: '#0dcaf0',
     connect:         '#198754',
@@ -31,14 +33,14 @@
   };
 
   function makeIcon(eventType) {
-    const colour = COLOURS[eventType] || '#adb5bd';
-    const svg = `
-      <svg xmlns="http://www.w3.org/2000/svg" width="20" height="26" viewBox="0 0 20 26">
-        <ellipse cx="10" cy="24" rx="5" ry="2" fill="rgba(0,0,0,.4)"/>
-        <path d="M10 0C6 0 2 3.5 2 8c0 6 8 18 8 18S18 14 18 8C18 3.5 14 0 10 0z"
-              fill="${colour}" stroke="#fff" stroke-width="1.5"/>
-        <circle cx="10" cy="8" r="3.5" fill="#fff" fill-opacity=".9"/>
-      </svg>`;
+    var colour = COLOURS[eventType] || '#adb5bd';
+    var svg =
+      '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="26" viewBox="0 0 20 26">' +
+        '<ellipse cx="10" cy="24" rx="5" ry="2" fill="rgba(0,0,0,.4)"/>' +
+        '<path d="M10 0C6 0 2 3.5 2 8c0 6 8 18 8 18S18 14 18 8C18 3.5 14 0 10 0z"' +
+        '  fill="' + colour + '" stroke="#fff" stroke-width="1.5"/>' +
+        '<circle cx="10" cy="8" r="3.5" fill="#fff" fill-opacity=".9"/>' +
+      '</svg>';
     return L.divIcon({
       className: '',
       html: svg,
@@ -54,7 +56,7 @@
       .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
   }
 
-  const points = (typeof MAP_POINTS !== 'undefined') ? MAP_POINTS : [];
+  var points = (typeof MAP_POINTS !== 'undefined') ? MAP_POINTS : [];
 
   if (points.length === 0) {
     el.style.cssText = 'display:flex;align-items:center;justify-content:center;';
@@ -62,75 +64,50 @@
     return;
   }
 
-  // Store connect markers by "lat,lon" so rows can fly to them
-  const connectMarkers = {};
-
-  const seen = {};
+  var seen = {};
   points.forEach(function (pt) {
-    const key = `${pt.lat.toFixed(2)},${pt.lon.toFixed(2)}`;
+    var key = pt.lat.toFixed(2) + ',' + pt.lon.toFixed(2);
     seen[key] = (seen[key] || 0) + 1;
-    const jitter = (seen[key] - 1) * 0.003;
+    var jitter = (seen[key] - 1) * 0.003;
 
-    const label  = pt.event_type.replace(/_/g, ' ');
-    const colour = COLOURS[pt.event_type] || '#adb5bd';
+    var label  = pt.event_type.replace(/_/g, ' ');
+    var colour = COLOURS[pt.event_type] || '#adb5bd';
 
-    const popup = L.popup({ maxWidth: 220, className: 'vpn-popup' }).setContent(`
-      <div style="line-height:1.6">
-        <div style="font-weight:700;font-size:.9rem;margin-bottom:4px">
-          ${escapeHtml(pt.username)}
-        </div>
-        <div>
-          <span style="display:inline-block;width:10px;height:10px;
-                       border-radius:50%;background:${colour};margin-right:5px;
-                       vertical-align:middle;"></span>
-          <em>${label}</em>
-        </div>
-        <div style="color:#888;margin-top:3px;font-size:.8rem">
-          📍 ${escapeHtml(pt.city)}, ${escapeHtml(pt.country)}
-        </div>
-      </div>`);
+    var popupHtml =
+      '<div style="line-height:1.6">' +
+        '<div style="font-weight:700;font-size:.9rem;margin-bottom:4px">' + escapeHtml(pt.username) + '</div>' +
+        '<div><span style="display:inline-block;width:10px;height:10px;border-radius:50%;' +
+          'background:' + colour + ';margin-right:5px;vertical-align:middle;"></span>' +
+          '<em>' + label + '</em></div>' +
+        '<div style="color:#888;margin-top:3px;font-size:.8rem">📍 ' +
+          escapeHtml(pt.city) + ', ' + escapeHtml(pt.country) + '</div>' +
+      '</div>';
 
-    const marker = L.marker([pt.lat + jitter, pt.lon + jitter], { icon: makeIcon(pt.event_type) })
-      .bindPopup(popup)
-      .addTo(map);
-
-    // Index the first connect marker at each location for row click
-    if (pt.event_type === 'connect') {
-      const ck = `${pt.lat.toFixed(4)},${pt.lon.toFixed(4)}`;
-      if (!connectMarkers[ck]) connectMarkers[ck] = marker;
-    }
+    L.marker([pt.lat + jitter, pt.lon + jitter], { icon: makeIcon(pt.event_type) })
+      .bindPopup(L.popup({ maxWidth: 220 }).setContent(popupHtml))
+      .addTo(vpnMap);
   });
 
   try {
-    const latLngs = points.map(p => [p.lat, p.lon]);
-    map.fitBounds(L.latLngBounds(latLngs).pad(0.15));
-  } catch (_) {
-    map.setView([20, 0], 2);
+    var latLngs = points.map(function (p) { return [p.lat, p.lon]; });
+    vpnMap.fitBounds(L.latLngBounds(latLngs).pad(0.15));
+  } catch (e) {
+    vpnMap.setView([20, 0], 2);
   }
 
   // Legend
-  const legend = L.control({ position: 'bottomright' });
+  var legend = L.control({ position: 'bottomright' });
   legend.onAdd = function () {
-    const div = L.DomUtil.create('div');
+    var div = L.DomUtil.create('div');
     div.style.cssText =
       'background:#1e1e1e;border:1px solid #2a2a2a;border-radius:6px;' +
       'padding:8px 12px;font-size:.75rem;color:#ccc;line-height:1.8;';
-    div.innerHTML = Object.entries(COLOURS).map(([k, c]) =>
-      `<span style="display:inline-block;width:10px;height:10px;border-radius:50%;` +
-      `background:${c};margin-right:5px;vertical-align:middle;"></span>` +
-      k.replace(/_/g, ' ') + '<br>'
-    ).join('');
+    div.innerHTML = Object.entries(COLOURS).map(function (e) {
+      return '<span style="display:inline-block;width:10px;height:10px;border-radius:50%;' +
+        'background:' + e[1] + ';margin-right:5px;vertical-align:middle;"></span>' +
+        e[0].replace(/_/g, ' ') + '<br>';
+    }).join('');
     return div;
   };
-  legend.addTo(map);
-
-  // Global function — called by table row click handlers
-  window.flyToMarker = function (lat, lon) {
-    el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-    map.flyTo([lat, lon], 13, { animate: true, duration: 1.2 });
-    const ck = `${parseFloat(lat).toFixed(4)},${parseFloat(lon).toFixed(4)}`;
-    if (connectMarkers[ck]) {
-      setTimeout(function () { connectMarkers[ck].openPopup(); }, 1300);
-    }
-  };
+  legend.addTo(vpnMap);
 })();
