@@ -41,9 +41,13 @@ def _lookup_geolite(ip_address: str):
         return None
     try:
         r = reader.city(ip_address)
+        city = r.city.name or r.subdivisions.most_specific.name
+        # Incomplete record (country only) — fall through to ip-api
+        if not city or not r.country.name:
+            return None
         return {
-            'country': r.country.name or 'Unknown',
-            'city':    r.city.name or r.subdivisions.most_specific.name or 'Unknown',
+            'country': r.country.name,
+            'city':    city,
             'lat':     float(r.location.latitude or 0.0),
             'lon':     float(r.location.longitude or 0.0),
         }
