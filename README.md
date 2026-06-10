@@ -40,7 +40,7 @@ vpn-project/
 ├── requirements.txt         # Python dependencies
 ├── create_admin.py          # One-time admin account setup
 ├── .env.example             # Environment variable template
-├── vpn_system.sql           # Full MySQL schema + IP pool
+├── vpn_system.sql           # Full MySQL schema + IP pool (fresh installs)
 │
 ├── routes/
 │   ├── auth.py              # Login, register, logout + decorators
@@ -57,24 +57,31 @@ vpn-project/
 │   ├── login.html
 │   ├── register.html
 │   ├── admin/
-│   │   ├── dashboard.html   # Stats cards + recent activity
-│   │   ├── users.html       # User table + extend/revoke actions
+│   │   ├── dashboard.html   # Stats cards + connections chart + recent activity
+│   │   ├── users.html       # User table (desktop) + card layout (mobile)
 │   │   ├── create_user.html # Admin-generated user form
-│   │   ├── logs.html        # Leaflet.js map + paginated log table
+│   │   ├── logs.html        # Live connection map + paginated log table
+│   │   ├── peer_stats.html  # Live peer stats with real-time speed
 │   │   └── user_detail.html # Per-user deep-dive view
 │   └── user/
-│       └── dashboard.html   # VPN status, download config, activity
+│       └── dashboard.html   # VPN status, QR code, download config, traffic
 │
 ├── static/
+│   ├── favicon.svg          # Browser tab icon
 │   ├── css/style.css        # Custom light theme styles
 │   └── js/map.js            # Leaflet map renderer (geolocation)
 │
 └── scripts/
     ├── full_setup.sh        # ★ Interactive production installer (start here)
     ├── setup_wireguard.sh   # WireGuard-only setup (called by full_setup.sh)
+    ├── setup_https.sh       # Let's Encrypt HTTPS (run after full_setup.sh)
     ├── add_peer.sh          # Called by Flask to add a WG peer
     ├── remove_peer.sh       # Called by Flask to remove a WG peer
     ├── cron_expiry.sh       # Auto-revoke expired users every 5 minutes
+    ├── cron_monitor.sh      # Connect/disconnect detection + traffic (every minute)
+    ├── notify_expiry.py     # Expiry warning emails (daily)
+    ├── backup_db.sh         # Daily MySQL backup, keeps 7 days
+    ├── migrate_v2.sql       # Migration for installs older than v2
     ├── vpn-webapp.service   # systemd unit for Gunicorn (auto-start)
     └── install_service.sh   # Register services only (subset of full_setup.sh)
 ```
@@ -133,16 +140,16 @@ auto-detected from the script's own location, so you only need to answer:
 | 8 | Writes and enables Nginx vhost for your domain |
 | 9 | Configures UFW firewall — opens ports 22, 80, 443, WireGuard |
 | 10 | Installs and enables `vpn-webapp.service` (auto-start on reboot) |
-| 11 | Installs cron job for auto-expiry of VPN users |
+| 11 | Installs 4 cron jobs — expiry, monitor, email alerts, DB backup |
 
 After the script finishes, only one manual step remains:
 
 ```bash
 # Create the first admin account
-sudo -u www-data bash -c 'cd /opt/vpn-project && venv/bin/python create_admin.py'
+cd /opt/vpn-project && sudo venv/bin/python create_admin.py
 
-# (Optional but recommended) Enable HTTPS
-sudo certbot --nginx -d yourdomain.com
+# (Optional but recommended) Enable HTTPS with Let's Encrypt
+sudo bash scripts/setup_https.sh yourdomain.com admin@example.com
 ```
 
 ---
@@ -251,18 +258,30 @@ sudo nginx -t && sudo systemctl reload nginx
 sudo bash scripts/install_service.sh
 ```
 
-#### Step 11 — Set up the cron job (auto-expire users)
+#### Step 11 — Set up the cron jobs
+
+Create `/etc/cron.d/vpn-manager`:
 
 ```bash
-crontab -e
-# Add:
-*/5 * * * * /opt/vpn-project/scripts/cron_expiry.sh >> /var/log/vpn_expiry.log 2>&1
+SHELL=/bin/bash
+PATH=/usr/local/sbin:/usr/local/bin:/sbin:/bin:/usr/sbin:/usr/bin
+*/5 * * * * root bash /opt/vpn-project/scripts/cron_expiry.sh >> /var/log/vpn_expiry.log 2>&1
+* * * * * root bash /opt/vpn-project/scripts/cron_monitor.sh >> /var/log/vpn_monitor.log 2>&1
+0 8 * * * root /opt/vpn-project/venv/bin/python /opt/vpn-project/scripts/notify_expiry.py >> /var/log/vpn_notify.log 2>&1
+0 3 * * * root bash /opt/vpn-project/scripts/backup_db.sh >> /var/log/vpn_backup.log 2>&1
 ```
+
+| Job | Schedule | Purpose |
+|-----|----------|---------|
+| `cron_expiry.sh` | every 5 min | Auto-revoke expired users |
+| `cron_monitor.sh` | every minute | Detect connect/disconnect events + traffic counters |
+| `notify_expiry.py` | daily 08:00 | Email users 3 days before expiry (needs SMTP in `.env`) |
+| `backup_db.sh` | daily 03:00 | MySQL backup to `/var/backups/vpn-manager`, keeps 7 days |
 
 #### Step 12 — (Optional) Add HTTPS with Let's Encrypt
 
 ```bash
-sudo certbot --nginx -d yourdomain.com
+sudo bash scripts/setup_https.sh yourdomain.com admin@example.com
 ```
 
 Certbot auto-renews the certificate and reconfigures Nginx for HTTPS.
@@ -349,18 +368,25 @@ sudo systemctl is-active nginx          # should print: active
 - Self-register with email + password
 - 7-day default access period
 - One-click WireGuard config generation
-- Download named `.conf` file
+- Download named `.conf` file or scan QR code with the mobile app
+- Personal traffic counters (downloaded / uploaded)
 - View own activity log and connection history
+- Fully responsive — works on phones
 
 ### Admin Dashboard
 - Live WireGuard interface status indicator
 - Stats: total / active / expired users, active peers, daily logs
+- Connections-per-day chart (last 14 days, Chart.js)
+- Live Online/Offline badge per user (from WireGuard handshake)
+- Per-user traffic usage (download / upload)
 - Create users with custom expiry duration
 - Extend access (1 / 3 / 7 / 14 / 30 days)
+- Reset user passwords (random generated, shown once)
 - Revoke access (removes WireGuard peer immediately)
 - Paginated connection logs with event and username filters
-- Leaflet.js map of connection geolocations
-- JSON API endpoint: `/admin/api/peer-stats`
+- Live connection map — shows only currently-connected users
+- Live peer stats page with real-time transfer speed
+- Mobile card layout on small screens
 
 ### WireGuard Automation
 - Automatic keypair + PSK generation per user
@@ -372,8 +398,12 @@ sudo systemctl is-active nginx          # should print: active
 - Passwords hashed with PBKDF2-SHA256 (Werkzeug)
 - SQL injection prevented with parameterised queries
 - Role-based session authentication (admin / user)
+- Login rate limiting — 5 failed attempts locks the account for 15 minutes
+- HTTPS via Let's Encrypt (`setup_https.sh`)
+- MySQL credentials never exposed on the command line (defaults file)
 - Expired session auto-redirect to login
 - Preshared keys per peer for additional encryption layer
+- Daily database backups with restricted permissions (7-day retention)
 
 ---
 
@@ -391,6 +421,12 @@ sudo systemctl is-active nginx          # should print: active
 | `WG_SERVER_ENDPOINT`   | `0.0.0.0:51820`      | `<IP>:<port>` clients connect to |
 | `WG_DNS`               | `1.1.1.1, 1.0.0.1`  | DNS pushed to clients            |
 | `DEFAULT_EXPIRY_DAYS`  | `7`                  | Default user access duration     |
+| `SMTP_HOST`            | *(empty = disabled)* | SMTP server for expiry emails    |
+| `SMTP_PORT`            | `587`                | SMTP port (STARTTLS)             |
+| `SMTP_USER`            | —                    | SMTP login username              |
+| `SMTP_PASSWORD`        | —                    | SMTP login password              |
+| `SMTP_FROM`            | `VPN Manager <...>`  | From address on emails           |
+| `EXPIRY_WARN_DAYS`     | `3`                  | Days before expiry to email user |
 
 ---
 
@@ -403,6 +439,7 @@ sudo systemctl is-active nginx          # should print: active
 | `vpn_peers`       | WireGuard peer config per user             |
 | `connection_logs` | All VPN events with geolocation data       |
 | `ip_pool`         | 10.8.0.2–254 IP allocation pool            |
+| `failed_logins`   | Login attempts for rate limiting           |
 
 ---
 
@@ -419,13 +456,16 @@ sudo systemctl is-active nginx          # should print: active
 | GET    | `/user/`                   | user  | VPN dashboard            |
 | POST   | `/user/vpn/generate`       | user  | Generate WG config       |
 | GET    | `/user/vpn/download`       | user  | Download `.conf` file    |
-| GET    | `/admin/`                  | admin | Admin dashboard          |
+| GET    | `/user/vpn/qrcode`         | user  | Config as QR code (PNG)  |
+| GET    | `/admin/`                  | admin | Admin dashboard + chart  |
 | GET    | `/admin/users`             | admin | User list                |
 | GET    | `/admin/users/create`      | admin | Create user form         |
 | POST   | `/admin/users/create`      | admin | Create user              |
 | POST   | `/admin/users/<id>/extend` | admin | Extend user expiry       |
+| POST   | `/admin/users/<id>/reset-password` | admin | Reset user password |
 | POST   | `/admin/users/<id>/revoke` | admin | Revoke user access       |
-| GET    | `/admin/logs`              | admin | Connection logs          |
+| GET    | `/admin/logs`              | admin | Logs + live connection map |
+| GET    | `/admin/peer-stats`        | admin | Live peer stats page     |
 | GET    | `/admin/api/peer-stats`    | admin | Live WG stats (JSON)     |
 
 ---
@@ -445,9 +485,14 @@ Ensure `wg-quick save wg0` completed successfully after the last peer change.
 Check that `systemctl is-enabled wg-quick@wg0` returns `enabled`.
 
 **WireGuard commands fail (permission denied):**
-Verify the sudoers file at `/etc/sudoers.d/vpn-webapp` grants `www-data`
-passwordless access to `wg`, `wg-quick`, `add_peer.sh`, and `remove_peer.sh`.
-Re-run `sudo bash scripts/setup_wireguard.sh` to regenerate it.
+The web app service runs as root (see `scripts/vpn-webapp.service`) so it can
+manage WireGuard peers directly. If you changed the service user, WireGuard
+calls will fail — restore `User=root` and run `sudo systemctl daemon-reload`.
+
+**Cron jobs show "Permission denied" in logs:**
+Ensure the cron entries invoke scripts via `bash` (e.g.
+`root bash /opt/vpn-project/scripts/cron_monitor.sh`) — execute permission
+can be lost when files are transferred from Windows.
 
 **`wg genkey` not found on Windows:**
 The application is designed to run on Linux. For local development on Windows,
