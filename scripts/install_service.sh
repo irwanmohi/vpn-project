@@ -17,7 +17,7 @@ fi
 
 echo "[1/5] Creating log directory $LOG_DIR…"
 mkdir -p "$LOG_DIR"
-chown www-data:www-data "$LOG_DIR"
+chown root:root "$LOG_DIR"
 
 echo "[2/5] Installing systemd unit…"
 UNIT_FILE="$PROJECT_DIR/scripts/vpn-webapp.service"

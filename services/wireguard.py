@@ -65,7 +65,7 @@ def add_peer(public_key: str, preshared_key: str, vpn_ip: str):
     script = os.path.join(current_app.config['SCRIPTS_PATH'], 'add_peer.sh')
     if not os.path.isfile(script):
         return False, f'Script not found: {script}'
-    ok, out, err = _run(['sudo', 'bash', script, public_key, preshared_key, vpn_ip])
+    ok, out, err = _run(['bash', script, public_key, preshared_key, vpn_ip])
     return ok, (err or out)
 
 
@@ -73,7 +73,7 @@ def remove_peer(public_key: str):
     script = os.path.join(current_app.config['SCRIPTS_PATH'], 'remove_peer.sh')
     if not os.path.isfile(script):
         return False, f'Script not found: {script}'
-    ok, out, err = _run(['sudo', 'bash', script, public_key])
+    ok, out, err = _run(['bash', script, public_key])
     return ok, (err or out)
 
 
@@ -96,7 +96,7 @@ def generate_client_config(private_key: str, vpn_ip: str, preshared_key: str) ->
 
 def get_peer_stats() -> dict:
     iface = current_app.config['WG_INTERFACE']
-    ok, out, _ = _run(['sudo', 'wg', 'show', iface, 'dump'])
+    ok, out, _ = _run(['wg', 'show', iface, 'dump'])
     if not ok or not out:
         return {}
 
@@ -116,5 +116,5 @@ def get_peer_stats() -> dict:
 
 def is_interface_up() -> bool:
     iface = current_app.config['WG_INTERFACE']
-    ok, _, _ = _run(['sudo', 'wg', 'show', iface])
+    ok, _, _ = _run(['wg', 'show', iface])
     return ok

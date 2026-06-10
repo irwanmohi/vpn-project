@@ -16,8 +16,8 @@ Wants=mysql.service
 
 [Service]
 # ---- Change these three lines to match your setup ----
-User=www-data
-Group=www-data
+User=root
+Group=root
 WorkingDirectory=/opt/vpn-project
 # -------------------------------------------------------
 
@@ -40,8 +40,6 @@ ExecReload=/bin/kill -s HUP $MAINPID
 Restart=on-failure
 RestartSec=5s
 
-# Security hardening
-NoNewPrivileges=true
 PrivateTmp=true
 
 [Install]
