@@ -72,7 +72,6 @@
             <th>Real IP</th>
             <th>Location</th>
             <th>Event</th>
-            <th>Traffic</th>
           </tr>
         </thead>
         <tbody>
@@ -108,12 +107,6 @@
               {% else %}
                 <span class="badge bg-secondary">{{ et }}</span>
               {% endif %}
-            </td>
-            <td class="text-muted text-nowrap">
-              {% if log.bytes_sent or log.bytes_received %}
-                <i class="fas fa-arrow-up text-success me-1"></i>{{ log.bytes_sent | bytes_fmt }}
-                <i class="fas fa-arrow-down text-info ms-1 me-1"></i>{{ log.bytes_received | bytes_fmt }}
-              {% else %}—{% endif %}
             </td>
           </tr>
           {% else %}
