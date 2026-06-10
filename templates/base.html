@@ -90,7 +90,7 @@
 {% endif %}
 
 <!-- ===== Flash messages ===== -->
-<div class="container-fluid px-4 mt-3">
+<div class="container-fluid px-3 mt-3">
   {% with messages = get_flashed_messages(with_categories=true) %}
   {% if messages %}
     {% for cat, msg in messages %}
@@ -109,7 +109,7 @@
 </div>
 
 <!-- ===== Main content ===== -->
-<main class="container-fluid px-4 py-4">
+<main class="container-fluid px-3 px-lg-4 py-4">
   {% block content %}{% endblock %}
 </main>
 
