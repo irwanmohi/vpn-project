@@ -47,14 +47,13 @@ Address    = ${SERVER_IP}/24
 ListenPort = ${WG_PORT}
 PrivateKey = ${SERVER_PRIV}
 
-# NAT / masquerading rules (managed by wg-quick)
-PostUp   = iptables -t nat -A POSTROUTING -s ${WG_SUBNET} -o ${NET_IF} -j MASQUERADE; \\
-           iptables -A FORWARD -i ${WG_INTERFACE} -j ACCEPT; \\
-           iptables -A FORWARD -o ${WG_INTERFACE} -m state --state RELATED,ESTABLISHED -j ACCEPT
+PostUp = iptables -t nat -A POSTROUTING -s ${WG_SUBNET} -o ${NET_IF} -j MASQUERADE
+PostUp = iptables -A FORWARD -i ${WG_INTERFACE} -j ACCEPT
+PostUp = iptables -A FORWARD -o ${WG_INTERFACE} -m state --state RELATED,ESTABLISHED -j ACCEPT
 
-PostDown = iptables -t nat -D POSTROUTING -s ${WG_SUBNET} -o ${NET_IF} -j MASQUERADE; \\
-           iptables -D FORWARD -i ${WG_INTERFACE} -j ACCEPT; \\
-           iptables -D FORWARD -o ${WG_INTERFACE} -m state --state RELATED,ESTABLISHED -j ACCEPT
+PostDown = iptables -t nat -D POSTROUTING -s ${WG_SUBNET} -o ${NET_IF} -j MASQUERADE
+PostDown = iptables -D FORWARD -i ${WG_INTERFACE} -j ACCEPT
+PostDown = iptables -D FORWARD -o ${WG_INTERFACE} -m state --state RELATED,ESTABLISHED -j ACCEPT
 
 # Peers are added dynamically by the web application.
 EOF
