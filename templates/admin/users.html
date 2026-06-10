@@ -23,7 +23,8 @@
   </div>
 </div>
 
-<div class="card border-0 shadow-sm">
+<!-- ===== Desktop: table ===== -->
+<div class="card border-0 shadow-sm d-none d-lg-block">
   <div class="card-body p-0">
     <div class="table-responsive">
       <table class="table table-hover table-sm align-middle mb-0" id="userTable">
@@ -45,7 +46,6 @@
           <tr>
             <td class="ps-3 text-muted">{{ loop.index }}</td>
 
-            <!-- User info -->
             <td>
               <div class="fw-semibold text-dark">{{ u.username }}</div>
               <div class="text-muted small">{{ u.email }}</div>
@@ -54,7 +54,6 @@
               {% endif %}
             </td>
 
-            <!-- VPN IP -->
             <td>
               {% if has_vpn %}
                 <code>{{ u.vpn_ip }}</code>
@@ -74,7 +73,6 @@
               {% endif %}
             </td>
 
-            <!-- Status -->
             <td>
               {% if not u.is_active %}
                 <span class="badge bg-danger-subtle text-danger border border-danger-subtle">
@@ -105,10 +103,8 @@
               {% endif %}
             </td>
 
-            <!-- Created -->
             <td class="text-muted">{{ u.created_at | datetimefmt('%Y-%m-%d') }}</td>
 
-            <!-- Expiry -->
             <td>
               {% if is_expired %}
                 <span class="text-danger fw-semibold">{{ u.expires_at | datetimefmt('%Y-%m-%d') }}</span>
@@ -124,7 +120,6 @@
               {% endif %}
             </td>
 
-            <!-- Actions -->
             <td class="text-center">
               <div class="d-flex justify-content-center gap-1 flex-wrap">
 
@@ -176,6 +171,121 @@
     </div>
   </div>
 </div>
+
+<!-- ===== Mobile: cards ===== -->
+<div class="d-lg-none">
+  {% for u in users %}
+  {% set is_expired = u.expires_at < now %}
+  {% set has_vpn    = u.vpn_ip is not none %}
+  <div class="card border-0 shadow-sm mb-3 user-card">
+    <div class="card-body pb-2">
+
+      <div class="d-flex justify-content-between align-items-start mb-2">
+        <div>
+          <div class="fw-bold text-dark">{{ u.username }}</div>
+          <div class="text-muted small">{{ u.email }}</div>
+          {% if u.full_name %}
+            <div class="text-muted small">{{ u.full_name }}</div>
+          {% endif %}
+        </div>
+        <div class="text-end">
+          {% if not u.is_active %}
+            <span class="badge bg-danger-subtle text-danger border border-danger-subtle">Revoked</span>
+          {% elif is_expired %}
+            <span class="badge bg-warning-subtle text-warning border border-warning-subtle">Expired</span>
+          {% else %}
+            <span class="badge bg-success-subtle text-success border border-success-subtle">Active</span>
+          {% endif %}
+          {% if u.online %}
+            <div class="mt-1">
+              <span class="badge bg-success text-white"><i class="fas fa-wifi me-1"></i>Online</span>
+            </div>
+          {% elif has_vpn and u.is_active and not is_expired %}
+            <div class="mt-1">
+              <span class="badge bg-secondary-subtle text-secondary border border-secondary-subtle">Offline</span>
+            </div>
+          {% endif %}
+        </div>
+      </div>
+
+      <div class="row g-2 small mb-2">
+        <div class="col-6">
+          <div class="text-muted">VPN IP</div>
+          {% if has_vpn %}
+            <code>{{ u.vpn_ip }}</code>
+            {% if u.config_downloaded %}
+              <span class="text-success"><i class="fas fa-check"></i></span>
+            {% else %}
+              <span class="text-warning"><i class="fas fa-clock"></i></span>
+            {% endif %}
+          {% else %}
+            <span class="text-muted">—</span>
+          {% endif %}
+        </div>
+        <div class="col-6">
+          <div class="text-muted">Expires</div>
+          {% if is_expired %}
+            <span class="text-danger fw-semibold">{{ u.expires_at | datetimefmt('%Y-%m-%d') }}</span>
+          {% else %}
+            {% set days = ((u.expires_at - now).days) %}
+            <span class="text-dark">{{ u.expires_at | datetimefmt('%Y-%m-%d') }}</span>
+            {% if days <= 1 %}<span class="text-danger">({{ days }}d)</span>
+            {% elif days <= 3 %}<span class="text-warning fw-semibold">({{ days }}d)</span>
+            {% else %}<span class="text-success">({{ days }}d)</span>{% endif %}
+          {% endif %}
+        </div>
+        {% if u.total_rx or u.total_tx %}
+        <div class="col-12">
+          <div class="text-muted">Traffic</div>
+          <span class="text-dark">
+            <i class="fas fa-arrow-down text-success"></i> {{ u.total_tx | bytes_fmt }}
+            <i class="fas fa-arrow-up text-primary ms-2"></i> {{ u.total_rx | bytes_fmt }}
+          </span>
+        </div>
+        {% endif %}
+      </div>
+
+      <hr class="my-2" />
+
+      <div class="d-flex flex-wrap gap-1 align-items-center pb-1">
+        {% for d in [1, 3, 7, 14, 30] %}
+        <form method="POST" action="{{ url_for('admin.extend_user', user_id=u.id) }}">
+          <input type="hidden" name="days" value="{{ d }}" />
+          <button type="submit" class="btn btn-outline-success btn-sm">+{{ d }}d</button>
+        </form>
+        {% endfor %}
+
+        <form method="POST" class="ms-auto"
+              action="{{ url_for('admin.reset_password', user_id=u.id) }}"
+              onsubmit="return confirm('Reset password for {{ u.username }}? A new random password will be generated.')">
+          <button type="submit" class="btn btn-outline-warning btn-sm" title="Reset password">
+            <i class="fas fa-key"></i>
+          </button>
+        </form>
+
+        {% if u.is_active %}
+        <form method="POST"
+              action="{{ url_for('admin.revoke_user', user_id=u.id) }}"
+              onsubmit="return confirm('Revoke access for {{ u.username }}? Their WireGuard peer will be removed immediately.')">
+          <button type="submit" class="btn btn-outline-danger btn-sm" title="Revoke access">
+            <i class="fas fa-ban"></i>
+          </button>
+        </form>
+        {% endif %}
+      </div>
+
+    </div>
+  </div>
+  {% else %}
+  <div class="card border-0 shadow-sm">
+    <div class="card-body text-center text-muted py-5">
+      <i class="fas fa-users fa-2x mb-3 d-block opacity-25"></i>
+      No users yet.
+      <a href="{{ url_for('admin.create_user') }}" class="text-primary">Create the first one.</a>
+    </div>
+  </div>
+  {% endfor %}
+</div>
 {% endblock %}
 
 {% block scripts %}
@@ -184,6 +294,9 @@
     const term = this.value.toLowerCase();
     document.querySelectorAll('#userTable tbody tr').forEach(row => {
       row.style.display = row.textContent.toLowerCase().includes(term) ? '' : 'none';
+    });
+    document.querySelectorAll('.user-card').forEach(card => {
+      card.style.display = card.textContent.toLowerCase().includes(term) ? '' : 'none';
     });
   });
 </script>
