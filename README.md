@@ -50,7 +50,7 @@ vpn-project/
 ├── services/
 │   ├── database.py          # PyMySQL connection + query helper
 │   ├── wireguard.py         # Key gen, peer add/remove, live stats
-│   └── geolocation.py       # ip-api.com geolocation lookup
+│   └── geolocation.py       # GeoLite2 local DB lookup, ip-api.com fallback
 │
 ├── templates/               # Bootstrap 5 light theme
 │   ├── base.html            # Shared layout (navbar, flash messages)
@@ -75,6 +75,8 @@ vpn-project/
     ├── full_setup.sh        # ★ Interactive production installer (start here)
     ├── setup_wireguard.sh   # WireGuard-only setup (called by full_setup.sh)
     ├── setup_https.sh       # Let's Encrypt HTTPS (run after full_setup.sh)
+    ├── setup_geoip.sh       # MaxMind GeoLite2 local DB + auto-update (optional)
+    ├── geoip_lookup.py      # CLI geolocation helper used by cron_monitor.sh
     ├── add_peer.sh          # Called by Flask to add a WG peer
     ├── remove_peer.sh       # Called by Flask to remove a WG peer
     ├── cron_expiry.sh       # Auto-revoke expired users every 5 minutes
@@ -150,6 +152,10 @@ cd /opt/vpn-project && sudo venv/bin/python create_admin.py
 
 # (Optional but recommended) Enable HTTPS with Let's Encrypt
 sudo bash scripts/setup_https.sh yourdomain.com admin@example.com
+
+# (Optional) Local MaxMind GeoLite2 geolocation — faster, no API rate limit.
+# Free credentials: https://www.maxmind.com/en/geolite2/signup
+sudo bash scripts/setup_geoip.sh YOUR_ACCOUNT_ID YOUR_LICENSE_KEY
 ```
 
 ---
@@ -427,6 +433,7 @@ sudo systemctl is-active nginx          # should print: active
 | `SMTP_PASSWORD`        | —                    | SMTP login password              |
 | `SMTP_FROM`            | `VPN Manager <...>`  | From address on emails           |
 | `EXPIRY_WARN_DAYS`     | `3`                  | Days before expiry to email user |
+| `GEOIP_DB`             | `/var/lib/GeoIP/GeoLite2-City.mmdb` | GeoLite2 database path |
 
 ---
 
@@ -500,8 +507,16 @@ the Flask app starts normally but VPN key generation will fail with a clear
 error message — this is expected behaviour.
 
 **Geolocation shows Unknown:**
-The free `ip-api.com` API is rate-limited to ~45 requests/minute.
+Lookups try the local MaxMind GeoLite2 database first
+(`/var/lib/GeoIP/GeoLite2-City.mmdb`, installed by `setup_geoip.sh`) and fall
+back to the free `ip-api.com` API, which is rate-limited to ~45 requests/minute.
 Private and localhost IP addresses always show as "Local Network" by design.
+
+**Geolocation city looks wrong:**
+IP-based geolocation is approximate — databases map IP ranges to where the
+ISP registers them, not the device's physical location. Country-level data is
+~99% accurate, but city-level is often off for dynamic residential IPs.
+This is an inherent limitation of all geolocation providers, not a bug.
 
 **MySQL connection refused on boot:**
 The `vpn-webapp.service` unit already declares `After=mysql.service`.
