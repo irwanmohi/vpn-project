@@ -278,6 +278,12 @@ def logs():
     )
 
 
+@admin_bp.route('/peer-stats')
+@_admin
+def peer_stats_page():
+    return render_template('admin/peer_stats.html')
+
+
 @admin_bp.route('/api/peer-stats')
 @_admin
 def api_peer_stats():

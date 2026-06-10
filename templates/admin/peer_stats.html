@@ -1,0 +1,127 @@
+{% extends 'base.html' %}
+{% block title %}Live Peer Stats — VPN Manager{% endblock %}
+
+{% block content %}
+<div class="d-flex align-items-center justify-content-between mb-4 flex-wrap gap-2">
+  <div>
+    <h4 class="fw-bold mb-0 text-dark">
+      <i class="fas fa-satellite-dish text-info me-2"></i>Live Peer Stats
+    </h4>
+    <p class="text-muted small mb-0">
+      Auto-refreshes every 3 seconds
+      <span class="pulse-dot bg-success ms-1"></span>
+      <span id="lastUpdate" class="ms-1"></span>
+    </p>
+  </div>
+  <a href="{{ url_for('admin.dashboard') }}" class="btn btn-outline-secondary btn-sm">
+    <i class="fas fa-arrow-left me-1"></i>Back to Dashboard
+  </a>
+</div>
+
+<div class="card border-0 shadow-sm">
+  <div class="card-body p-0">
+    <div class="table-responsive">
+      <table class="table table-hover align-middle mb-0 small">
+        <thead>
+          <tr>
+            <th class="ps-3">User</th>
+            <th>VPN IP</th>
+            <th>Status</th>
+            <th>Last Handshake</th>
+            <th><i class="fas fa-arrow-down text-success me-1"></i>Download</th>
+            <th><i class="fas fa-arrow-up text-primary me-1"></i>Upload</th>
+            <th><i class="fas fa-gauge-high text-muted me-1"></i>Speed ↓</th>
+            <th><i class="fas fa-gauge-high text-muted me-1"></i>Speed ↑</th>
+          </tr>
+        </thead>
+        <tbody id="statsBody">
+          <tr>
+            <td colspan="8" class="text-center text-muted py-5">
+              <i class="fas fa-spinner fa-spin me-2"></i>Loading…
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  const API_URL = "{{ url_for('admin.api_peer_stats') }}";
+  const POLL_MS = 3000;
+  let prev = {};
+
+  function fmtBytes(b) {
+    b = b || 0;
+    const units = ['B', 'KB', 'MB', 'GB', 'TB'];
+    let i = 0;
+    while (b >= 1024 && i < units.length - 1) { b /= 1024; i++; }
+    return b.toFixed(1) + ' ' + units[i];
+  }
+
+  function fmtAgo(ts) {
+    if (!ts) return 'never';
+    const s = Math.floor(Date.now() / 1000) - ts;
+    if (s < 60) return s + 's ago';
+    if (s < 3600) return Math.floor(s / 60) + 'm ago';
+    if (s < 86400) return Math.floor(s / 3600) + 'h ago';
+    return Math.floor(s / 86400) + 'd ago';
+  }
+
+  function esc(str) {
+    return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  }
+
+  async function refresh() {
+    let data;
+    try {
+      const res = await fetch(API_URL);
+      data = await res.json();
+    } catch (e) { return; }
+
+    const now  = Math.floor(Date.now() / 1000);
+    const body = document.getElementById('statsBody');
+
+    if (!data.length) {
+      body.innerHTML = '<tr><td colspan="8" class="text-center text-muted py-5">No active peers.</td></tr>';
+      return;
+    }
+
+    body.innerHTML = data.map(function (p) {
+      const online = p.last_handshake > 0 && (now - p.last_handshake) < 180;
+      const last   = prev[p.vpn_ip];
+      let downRate = '—', upRate = '—';
+      if (last && online) {
+        const dt = (Date.now() - last.t) / 1000;
+        if (dt > 0) {
+          downRate = fmtBytes(Math.max(0, (p.tx - last.tx) / dt)) + '/s';
+          upRate   = fmtBytes(Math.max(0, (p.rx - last.rx) / dt)) + '/s';
+        }
+      }
+      prev[p.vpn_ip] = { rx: p.rx, tx: p.tx, t: Date.now() };
+
+      return '<tr>' +
+        '<td class="ps-3 fw-semibold text-dark">' + esc(p.username) + '</td>' +
+        '<td><code>' + esc(p.vpn_ip) + '</code></td>' +
+        '<td>' + (online
+          ? '<span class="badge bg-success text-white"><i class="fas fa-wifi me-1"></i>Online</span>'
+          : '<span class="badge bg-secondary-subtle text-secondary border border-secondary-subtle">Offline</span>') +
+        '</td>' +
+        '<td class="text-muted">' + fmtAgo(p.last_handshake) + '</td>' +
+        '<td class="fw-semibold text-success">' + fmtBytes(p.tx) + '</td>' +
+        '<td class="fw-semibold text-primary">' + fmtBytes(p.rx) + '</td>' +
+        '<td class="text-muted">' + downRate + '</td>' +
+        '<td class="text-muted">' + upRate + '</td>' +
+      '</tr>';
+    }).join('');
+
+    document.getElementById('lastUpdate').textContent =
+      'Updated ' + new Date().toLocaleTimeString();
+  }
+
+  refresh();
+  setInterval(refresh, POLL_MS);
+</script>
+{% endblock %}
