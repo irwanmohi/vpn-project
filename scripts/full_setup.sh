@@ -166,6 +166,10 @@ fi
 # =============================================================
 banner "PHASE 2 — Installing Packages"
 
+info "Setting timezone to Asia/Kuala_Lumpur…"
+timedatectl set-timezone Asia/Kuala_Lumpur
+ok "Timezone: $(timedatectl show --property=Timezone --value)"
+
 info "Updating package lists…"
 apt-get update -qq
 
