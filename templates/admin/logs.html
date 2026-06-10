@@ -56,8 +56,10 @@
 <!-- ===== Leaflet map ===== -->
 <div class="card border-0 shadow-sm mb-4">
   <div class="card-header">
-    <i class="fas fa-map-location-dot text-primary me-2"></i>Connection Geolocation Map
-    <span class="badge bg-secondary ms-2">{{ map_points | length }} points</span>
+    <i class="fas fa-map-location-dot text-primary me-2"></i>Live Connection Map
+    <span class="badge bg-success ms-2">
+      <span class="pulse-dot bg-white me-1"></span>{{ map_points | length }} connected now
+    </span>
   </div>
   <div class="card-body p-0">
     <div id="geoMap" style="height:380px; border-radius:0 0 .5rem .5rem;"></div>

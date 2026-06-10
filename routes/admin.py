@@ -246,25 +246,37 @@ def logs():
         tuple(params) + (per_page, offset),
     )
 
-    # Map points — only rows with valid coordinates
-    raw_points = query(
-        "SELECT cl.latitude, cl.longitude, cl.country, cl.city, u.username "
-        "FROM connection_logs cl "
-        "JOIN users u ON cl.user_id=u.id "
-        "WHERE cl.event_type = 'connect' "
-        "  AND cl.latitude != 0 AND cl.longitude != 0 "
-        "ORDER BY cl.event_time DESC LIMIT 300"
+    # Map points — live tracker: only users connected RIGHT NOW
+    # (wg handshake < 3 min), placed at their latest connect location.
+    stats  = get_peer_stats()
+    now_ts = datetime.now().timestamp()
+    peers  = query(
+        "SELECT vp.public_key, vp.user_id, u.username "
+        "FROM vpn_peers vp JOIN users u ON vp.user_id=u.id "
+        "WHERE vp.is_active=1 AND u.is_active=1"
     )
-    map_points = [
-        {
-            'lat':      float(r['latitude']),
-            'lon':      float(r['longitude']),
-            'country':  r['country'],
-            'city':     r['city'],
-            'username': r['username'],
-        }
-        for r in raw_points
-    ]
+
+    map_points = []
+    for p in peers:
+        s = stats.get(p['public_key'])
+        if not (s and s['last_handshake'] > 0 and (now_ts - s['last_handshake']) < 180):
+            continue
+        ev = query(
+            "SELECT latitude, longitude, country, city "
+            "FROM connection_logs "
+            "WHERE user_id=%s AND event_type='connect' "
+            "  AND latitude != 0 AND longitude != 0 "
+            "ORDER BY event_time DESC LIMIT 1",
+            (p['user_id'],), one=True,
+        )
+        if ev:
+            map_points.append({
+                'lat':      float(ev['latitude']),
+                'lon':      float(ev['longitude']),
+                'country':  ev['country'],
+                'city':     ev['city'],
+                'username': p['username'],
+            })
 
     return render_template(
         'admin/logs.html',
