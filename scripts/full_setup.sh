@@ -556,6 +556,8 @@ SHELL=/bin/bash
 PATH=/usr/local/sbin:/usr/local/bin:/sbin:/bin:/usr/sbin:/usr/bin
 */5 * * * * root ${DEPLOY_PATH}/scripts/cron_expiry.sh >> /var/log/vpn_expiry.log 2>&1
 * * * * * root ${DEPLOY_PATH}/scripts/cron_monitor.sh >> /var/log/vpn_monitor.log 2>&1
+0 8 * * * root ${DEPLOY_PATH}/venv/bin/python ${DEPLOY_PATH}/scripts/notify_expiry.py >> /var/log/vpn_notify.log 2>&1
+0 3 * * * root ${DEPLOY_PATH}/scripts/backup_db.sh >> /var/log/vpn_backup.log 2>&1
 CRON
 
 chmod 644 "$CRON_FILE"

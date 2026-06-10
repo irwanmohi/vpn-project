@@ -63,6 +63,12 @@
                 {% else %}
                   <div class="text-warning small"><i class="fas fa-clock me-1"></i>Not downloaded</div>
                 {% endif %}
+                {% if u.total_rx or u.total_tx %}
+                  <div class="text-muted small text-nowrap">
+                    <i class="fas fa-arrow-down"></i> {{ u.total_tx | bytes_fmt }}
+                    <i class="fas fa-arrow-up ms-1"></i> {{ u.total_rx | bytes_fmt }}
+                  </div>
+                {% endif %}
               {% else %}
                 <span class="text-muted">—</span>
               {% endif %}
@@ -82,6 +88,17 @@
                 <span class="badge bg-success-subtle text-success border border-success-subtle">
                   <span class="pulse-dot bg-success me-1"></span>Active
                 </span>
+              {% endif %}
+              {% if u.online %}
+                <div class="mt-1">
+                  <span class="badge bg-success text-white">
+                    <i class="fas fa-wifi me-1"></i>Online
+                  </span>
+                </div>
+              {% elif has_vpn and u.is_active and not is_expired %}
+                <div class="mt-1">
+                  <span class="badge bg-secondary-subtle text-secondary border border-secondary-subtle">Offline</span>
+                </div>
               {% endif %}
               {% if not has_vpn %}
                 <div class="text-muted small mt-1">No VPN configured</div>

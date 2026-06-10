@@ -42,7 +42,28 @@ def dashboard():
         "JOIN users u ON cl.user_id=u.id "
         "ORDER BY cl.event_time DESC LIMIT 12"
     )
-    return render_template('admin/dashboard.html', stats=stats, recent_logs=recent_logs)
+
+    # Connections per day, last 14 days (missing days filled with 0)
+    rows = query(
+        "SELECT DATE(event_time) AS d, COUNT(*) AS c "
+        "FROM connection_logs "
+        "WHERE event_type='connect' AND event_time > NOW() - INTERVAL 14 DAY "
+        "GROUP BY DATE(event_time)"
+    )
+    counts = {r['d'].strftime('%Y-%m-%d'): r['c'] for r in rows}
+    today  = datetime.now().date()
+    chart_labels = []
+    chart_values = []
+    for i in range(13, -1, -1):
+        day = today - timedelta(days=i)
+        chart_labels.append(day.strftime('%d %b'))
+        chart_values.append(counts.get(day.strftime('%Y-%m-%d'), 0))
+
+    return render_template(
+        'admin/dashboard.html',
+        stats=stats, recent_logs=recent_logs,
+        chart_labels=chart_labels, chart_values=chart_values,
+    )
 
 
 @admin_bp.route('/users')
@@ -51,11 +72,23 @@ def users():
     rows = query(
         "SELECT u.*, "
         "       vp.vpn_ip, vp.is_active AS vpn_active, vp.id AS peer_id, "
-        "       vp.config_downloaded "
+        "       vp.config_downloaded, vp.public_key, vp.total_rx, vp.total_tx "
         "FROM users u "
         "LEFT JOIN vpn_peers vp ON u.id=vp.user_id AND vp.is_active=1 "
         "ORDER BY u.created_at DESC"
     )
+
+    # Live handshake data — peer is online if handshake < 3 min ago
+    stats = get_peer_stats()
+    now_ts = datetime.now().timestamp()
+    for r in rows:
+        peer_stat   = stats.get(r['public_key']) if r['public_key'] else None
+        r['online'] = bool(
+            peer_stat
+            and peer_stat['last_handshake'] > 0
+            and (now_ts - peer_stat['last_handshake']) < 180
+        )
+
     return render_template('admin/users.html', users=rows, now=datetime.now())
 
 
@@ -104,7 +137,7 @@ def extend_user(user_id):
     base       = max(datetime.now(), user['expires_at'])
     new_expiry = base + timedelta(days=days)
     query(
-        "UPDATE users SET expires_at=%s, is_active=1 WHERE id=%s",
+        "UPDATE users SET expires_at=%s, is_active=1, expiry_notified=0 WHERE id=%s",
         (new_expiry, user_id), commit=True,
     )
     flash(f'Extended {user["username"]}\'s access by {days} day(s) → expires {new_expiry.strftime("%Y-%m-%d")}.', 'success')

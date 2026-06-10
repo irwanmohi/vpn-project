@@ -19,7 +19,18 @@ DB_PASS="${MYSQL_PASSWORD:-vpnpassword}"
 DB_NAME="${MYSQL_DB:-vpn_system}"
 WG_IFACE="${WG_INTERFACE:-wg0}"
 
-MYSQL_CMD="mysql -h $DB_HOST -u $DB_USER -p${DB_PASS} $DB_NAME -N -s"
+# Pass credentials via defaults file, not command line (hides from ps / logs)
+MYSQL_DEFAULTS=$(mktemp)
+chmod 600 "$MYSQL_DEFAULTS"
+cat > "$MYSQL_DEFAULTS" <<EOF
+[client]
+host=$DB_HOST
+user=$DB_USER
+password=$DB_PASS
+EOF
+trap 'rm -f "$MYSQL_DEFAULTS"' EXIT
+
+MYSQL_CMD="mysql --defaults-extra-file=$MYSQL_DEFAULTS $DB_NAME -N -s"
 
 echo "VPN Expiry Check — $(date '+%Y-%m-%d %H:%M:%S')"
 

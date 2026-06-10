@@ -35,6 +35,7 @@ CREATE TABLE IF NOT EXISTS users (
     created_at    TIMESTAMP    DEFAULT CURRENT_TIMESTAMP,
     expires_at    TIMESTAMP    NOT NULL,
     is_active     TINYINT(1)   DEFAULT 1,
+    expiry_notified TINYINT(1) DEFAULT 0,
     created_by    INT          NULL COMMENT 'admin id who created this user',
     UNIQUE KEY uq_users_username (username),
     UNIQUE KEY uq_users_email    (email),
@@ -61,6 +62,10 @@ CREATE TABLE IF NOT EXISTS vpn_peers (
     created_at        TIMESTAMP    DEFAULT CURRENT_TIMESTAMP,
     is_active         TINYINT(1)   DEFAULT 1,
     config_downloaded TINYINT(1)   DEFAULT 0,
+    total_rx          BIGINT       DEFAULT 0,
+    total_tx          BIGINT       DEFAULT 0,
+    last_rx           BIGINT       DEFAULT 0,
+    last_tx           BIGINT       DEFAULT 0,
     UNIQUE KEY uq_peers_vpn_ip (vpn_ip),
     KEY idx_peers_user_id   (user_id),
     KEY idx_peers_is_active (is_active),
@@ -97,6 +102,17 @@ CREATE TABLE IF NOT EXISTS connection_logs (
     KEY idx_logs_event_type (event_type),
     CONSTRAINT fk_logs_user FOREIGN KEY (user_id)
         REFERENCES users(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- -----------------------------------------------------------
+-- Failed Login Attempts  (rate limiting)
+-- -----------------------------------------------------------
+CREATE TABLE IF NOT EXISTS failed_logins (
+    id           INT          AUTO_INCREMENT PRIMARY KEY,
+    username     VARCHAR(100) NOT NULL,
+    ip_address   VARCHAR(45)  NOT NULL,
+    attempted_at TIMESTAMP    DEFAULT CURRENT_TIMESTAMP,
+    KEY idx_failed_user_time (username, attempted_at)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 -- -----------------------------------------------------------

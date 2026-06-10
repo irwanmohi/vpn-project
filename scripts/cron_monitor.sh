@@ -18,7 +18,18 @@ DB_PASS="${MYSQL_PASSWORD:-vpnpassword}"
 DB_NAME="${MYSQL_DB:-vpn_system}"
 WG_IFACE="${WG_INTERFACE:-wg0}"
 
-MYSQL_CMD="mysql -h $DB_HOST -u $DB_USER -p${DB_PASS} $DB_NAME -N -s"
+# Pass credentials via defaults file, not command line (hides from ps / logs)
+MYSQL_DEFAULTS=$(mktemp)
+chmod 600 "$MYSQL_DEFAULTS"
+cat > "$MYSQL_DEFAULTS" <<EOF
+[client]
+host=$DB_HOST
+user=$DB_USER
+password=$DB_PASS
+EOF
+trap 'rm -f "$MYSQL_DEFAULTS"' EXIT
+
+MYSQL_CMD="mysql --defaults-extra-file=$MYSQL_DEFAULTS $DB_NAME -N -s"
 
 CONNECTED_THRESHOLD=180
 DISCONNECTED_THRESHOLD=300
@@ -64,6 +75,21 @@ _geolocate() {
 while IFS=$'\t' read -r PUBLIC_KEY VPN_IP USER_ID; do
 
     LAST_HS=$(echo "$WG_DUMP" | awk -v key="$PUBLIC_KEY" '$1==key {print $5}')
+
+    # Accumulate traffic counters (rx=$6, tx=$7 in wg dump).
+    # wg counters reset on interface restart — IF() handles the wrap.
+    RX=$(echo "$WG_DUMP" | awk -v key="$PUBLIC_KEY" '$1==key {print $6}')
+    TX=$(echo "$WG_DUMP" | awk -v key="$PUBLIC_KEY" '$1==key {print $7}')
+    if [[ -n "$RX" && -n "$TX" ]]; then
+        $MYSQL_CMD <<SQL
+            UPDATE vpn_peers SET
+                total_rx = total_rx + IF($RX >= last_rx, $RX - last_rx, $RX),
+                total_tx = total_tx + IF($TX >= last_tx, $TX - last_tx, $TX),
+                last_rx  = $RX,
+                last_tx  = $TX
+            WHERE user_id = $USER_ID AND is_active = 1;
+SQL
+    fi
 
     [[ -z "$LAST_HS" || "$LAST_HS" == "0" ]] && continue
 

@@ -103,14 +103,43 @@
                 <div class="text-muted mb-1">Generated</div>
                 <span class="text-dark">{{ peer.created_at | datetimefmt }}</span>
               </div>
+              <div class="col-6 col-sm-4">
+                <div class="text-muted mb-1">Downloaded (you)</div>
+                <span class="text-dark fw-semibold">
+                  <i class="fas fa-arrow-down text-success me-1"></i>{{ peer.total_tx | bytes_fmt }}
+                </span>
+              </div>
+              <div class="col-6 col-sm-4">
+                <div class="text-muted mb-1">Uploaded (you)</div>
+                <span class="text-dark fw-semibold">
+                  <i class="fas fa-arrow-up text-primary me-1"></i>{{ peer.total_rx | bytes_fmt }}
+                </span>
+              </div>
             </div>
 
-            <div class="mt-3">
+            <div class="mt-3 d-flex gap-2 flex-wrap">
               <a href="{{ url_for('user.download_config') }}"
                  class="btn btn-success fw-semibold shadow-sm">
                 <i class="fas fa-download me-2"></i>Download .conf File
               </a>
+              <button type="button" class="btn btn-outline-primary fw-semibold"
+                      data-bs-toggle="collapse" data-bs-target="#qrPanel">
+                <i class="fas fa-qrcode me-2"></i>Show QR Code
+              </button>
             </div>
+          </div>
+        </div>
+
+        <!-- QR code panel -->
+        <div class="collapse mt-3" id="qrPanel">
+          <div class="border rounded p-3 bg-light text-center">
+            <img src="{{ url_for('user.config_qrcode') }}" alt="WireGuard config QR code"
+                 class="img-fluid border rounded bg-white p-2" style="max-width:260px" />
+            <p class="text-muted small mb-0 mt-2">
+              <i class="fas fa-mobile-screen me-1"></i>
+              Open the WireGuard app on your phone → <strong class="text-dark">Add Tunnel</strong> →
+              <strong class="text-dark">Scan from QR code</strong>
+            </p>
           </div>
         </div>
 

@@ -10,6 +10,37 @@ from services.database import query
 
 auth_bp = Blueprint('auth', __name__)
 
+MAX_LOGIN_ATTEMPTS = 5
+LOCKOUT_MINUTES    = 15
+
+
+def _client_ip():
+    return request.headers.get('X-Forwarded-For', request.remote_addr).split(',')[0].strip()
+
+
+def _is_locked_out(username):
+    row = query(
+        "SELECT COUNT(*) AS c FROM failed_logins "
+        "WHERE username=%s AND ip_address=%s "
+        "  AND attempted_at > NOW() - INTERVAL %s MINUTE",
+        (username, _client_ip(), LOCKOUT_MINUTES), one=True,
+    )
+    return row['c'] >= MAX_LOGIN_ATTEMPTS
+
+
+def _record_failure(username):
+    query(
+        "INSERT INTO failed_logins (username, ip_address) VALUES (%s, %s)",
+        (username, _client_ip()), commit=True,
+    )
+
+
+def _clear_failures(username):
+    query(
+        "DELETE FROM failed_logins WHERE username=%s AND ip_address=%s",
+        (username, _client_ip()), commit=True,
+    )
+
 
 def login_required(f):
     @wraps(f)
@@ -41,9 +72,14 @@ def login():
         password = request.form.get('password', '')
         role     = request.form.get('role', 'user')
 
+        if _is_locked_out(username):
+            flash(f'Too many failed attempts. Try again in {LOCKOUT_MINUTES} minutes.', 'danger')
+            return render_template('login.html')
+
         if role == 'admin':
             row = query("SELECT * FROM admins WHERE username=%s", (username,), one=True)
             if row and check_password_hash(row['password_hash'], password):
+                _clear_failures(username)
                 _set_session(row['id'], row['username'], 'admin')
                 query("UPDATE admins SET last_login=NOW() WHERE id=%s", (row['id'],), commit=True)
                 flash(f"Welcome back, {row['username']}!", 'success')
@@ -57,10 +93,12 @@ def login():
                 if row['expires_at'] < datetime.now():
                     flash('Your account has expired. Contact an administrator.', 'danger')
                     return render_template('login.html')
+                _clear_failures(username)
                 _set_session(row['id'], row['username'], 'user')
                 flash(f"Welcome, {row['username']}!", 'success')
                 return redirect(url_for('user.dashboard'))
 
+        _record_failure(username)
         flash('Invalid credentials. Please try again.', 'danger')
 
     return render_template('login.html')

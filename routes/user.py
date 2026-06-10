@@ -1,6 +1,9 @@
+import io
 from datetime import datetime
 from functools import wraps
 
+import qrcode
+import qrcode.image.pure
 from flask import (Blueprint, current_app, flash, make_response,
                    redirect, render_template, request, session, url_for)
 
@@ -139,4 +142,36 @@ def download_config():
     response = make_response(config_content)
     response.headers['Content-Type']        = 'application/octet-stream'
     response.headers['Content-Disposition'] = f'attachment; filename="{username}-wg.conf"'
+    return response
+
+
+@user_bp.route('/vpn/qrcode')
+@_user_only
+def config_qrcode():
+    uid  = session['user_id']
+    peer = query("SELECT * FROM vpn_peers WHERE user_id=%s AND is_active=1", (uid,), one=True)
+
+    if not peer:
+        flash('No active VPN configuration found. Generate one first.', 'warning')
+        return redirect(url_for('user.dashboard'))
+
+    config_content = generate_client_config(
+        peer['private_key'], peer['vpn_ip'], peer['preshared_key'],
+    )
+
+    qr = qrcode.QRCode(
+        error_correction=qrcode.constants.ERROR_CORRECT_M,
+        box_size=8,
+        border=2,
+        image_factory=qrcode.image.pure.PyPNGImage,
+    )
+    qr.add_data(config_content)
+    qr.make(fit=True)
+
+    buf = io.BytesIO()
+    qr.make_image().save(buf)
+
+    response = make_response(buf.getvalue())
+    response.headers['Content-Type']  = 'image/png'
+    response.headers['Cache-Control'] = 'no-store'
     return response

@@ -98,6 +98,16 @@
 
 </div>
 
+<!-- ===== Connections chart ===== -->
+<div class="card border-0 shadow-sm mb-4">
+  <div class="card-header">
+    <i class="fas fa-chart-line text-success me-2"></i>VPN Connections — Last 14 Days
+  </div>
+  <div class="card-body">
+    <canvas id="connChart" height="70"></canvas>
+  </div>
+</div>
+
 <div class="row g-3">
   <!-- Recent activity -->
   <div class="col-lg-8">
@@ -192,7 +202,33 @@
 {% endmacro %}
 
 {% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
 <script>
+  new Chart(document.getElementById('connChart'), {
+    type: 'line',
+    data: {
+      labels: {{ chart_labels | tojson }},
+      datasets: [{
+        label: 'Connections',
+        data: {{ chart_values | tojson }},
+        borderColor: '#198754',
+        backgroundColor: 'rgba(25, 135, 84, 0.12)',
+        fill: true,
+        tension: 0.35,
+        pointRadius: 3,
+        pointBackgroundColor: '#198754',
+      }]
+    },
+    options: {
+      responsive: true,
+      plugins: { legend: { display: false } },
+      scales: {
+        y: { beginAtZero: true, ticks: { precision: 0 } },
+        x: { grid: { display: false } }
+      }
+    }
+  });
+
   setTimeout(() => location.reload(), 60000);
 </script>
 {% endblock %}
