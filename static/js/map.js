@@ -76,7 +76,8 @@ var vpnMap = null;
 
   try {
     var latLngs = points.map(function (p) { return [p.lat, p.lon]; });
-    vpnMap.fitBounds(L.latLngBounds(latLngs).pad(0.2));
+    // maxZoom caps single-point fits — full zoom renders almost black on dark tiles
+    vpnMap.fitBounds(L.latLngBounds(latLngs).pad(0.2), { maxZoom: 11 });
   } catch (e) {
     vpnMap.setView([20, 0], 2);
   }
