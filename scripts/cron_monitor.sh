@@ -56,6 +56,15 @@ _geolocate() {
         echo "Local|Local|0|0"
         return
     fi
+    # Prefer local GeoLite2 DB via venv helper (falls back to ip-api inside)
+    if [[ -x "$PROJECT_DIR/venv/bin/python" ]]; then
+        local out
+        out=$("$PROJECT_DIR/venv/bin/python" "$SCRIPT_DIR/geoip_lookup.py" "$ip" 2>/dev/null || true)
+        if [[ -n "$out" && "$out" != "Unknown|Unknown|0|0" ]]; then
+            echo "$out"
+            return
+        fi
+    fi
     local geo
     geo=$(curl -s --max-time 5 "http://ip-api.com/json/${ip}?fields=status,country,city,lat,lon" 2>/dev/null || echo '{}')
     local status
