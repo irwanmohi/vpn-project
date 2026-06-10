@@ -619,13 +619,19 @@ STEP=1
 if ! systemctl is-active vpn-webapp &>/dev/null; then
 echo -e ""
 echo -e "   ${BOLD}${STEP}.${NC} Create admin account:"
-echo -e "      ${CYAN}sudo -u www-data bash -c 'cd ${DEPLOY_PATH} && venv/bin/python create_admin.py'${NC}"
+echo -e "      ${CYAN}cd ${DEPLOY_PATH} && sudo venv/bin/python create_admin.py${NC}"
 STEP=$((STEP+1))
 fi
 
 echo -e ""
 echo -e "   ${BOLD}${STEP}.${NC} Add HTTPS with Let's Encrypt (recommended):"
-echo -e "      ${CYAN}sudo certbot --nginx -d ${DOMAIN}${NC}"
+echo -e "      ${CYAN}sudo bash ${DEPLOY_PATH}/scripts/setup_https.sh ${DOMAIN} admin@example.com${NC}"
+STEP=$((STEP+1))
+
+echo -e ""
+echo -e "   ${BOLD}${STEP}.${NC} (Optional) Local GeoLite2 geolocation — no API rate limit:"
+echo -e "      ${DIM}Free signup: https://www.maxmind.com/en/geolite2/signup${NC}"
+echo -e "      ${CYAN}sudo bash ${DEPLOY_PATH}/scripts/setup_geoip.sh <account_id> <license_key>${NC}"
 STEP=$((STEP+1))
 
 echo -e ""
