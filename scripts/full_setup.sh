@@ -624,14 +624,14 @@ STEP=$((STEP+1))
 fi
 
 echo -e ""
-echo -e "   ${BOLD}${STEP}.${NC} Add HTTPS with Let's Encrypt (recommended):"
-echo -e "      ${CYAN}sudo bash ${DEPLOY_PATH}/scripts/setup_https.sh ${DOMAIN} admin@example.com${NC}"
+echo -e "   ${BOLD}${STEP}.${NC} Add HTTPS with Let's Encrypt (recommended, interactive):"
+echo -e "      ${CYAN}sudo bash ${DEPLOY_PATH}/scripts/setup_https.sh${NC}"
 STEP=$((STEP+1))
 
 echo -e ""
-echo -e "   ${BOLD}${STEP}.${NC} (Optional) Local GeoLite2 geolocation — no API rate limit:"
+echo -e "   ${BOLD}${STEP}.${NC} (Optional) Local GeoLite2 geolocation — no API rate limit (interactive):"
 echo -e "      ${DIM}Free signup: https://www.maxmind.com/en/geolite2/signup${NC}"
-echo -e "      ${CYAN}sudo bash ${DEPLOY_PATH}/scripts/setup_geoip.sh <account_id> <license_key>${NC}"
+echo -e "      ${CYAN}sudo bash ${DEPLOY_PATH}/scripts/setup_geoip.sh${NC}"
 STEP=$((STEP+1))
 
 echo -e ""

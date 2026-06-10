@@ -1,28 +1,47 @@
 #!/usr/bin/env bash
-# Install MaxMind GeoLite2 local database + weekly auto-update.
-# Usage: sudo bash setup_geoip.sh <account_id> <license_key>
+# Install MaxMind GeoLite2 local database + twice-weekly auto-update.
+#
+# Interactive:      sudo bash setup_geoip.sh
+# Non-interactive:  sudo bash setup_geoip.sh <account_id> <license_key>
 #
 # Get free credentials at https://www.maxmind.com/en/geolite2/signup
-# NOTE: never commit your license key to git — it lives only in /etc/GeoIP.conf
+# The license key is written ONLY to /etc/GeoIP.conf (never stored in git).
 
 set -euo pipefail
 
 if [[ $EUID -ne 0 ]]; then
-    echo "Run as root: sudo bash $0 <account_id> <license_key>"
+    echo "Run as root: sudo bash $0"
     exit 1
 fi
 
 ACCOUNT_ID="${1:-}"
 LICENSE_KEY="${2:-}"
 
+echo "=============================================="
+echo "  GeoLite2 Setup — MaxMind"
+echo "=============================================="
+echo ""
+echo "  Free signup: https://www.maxmind.com/en/geolite2/signup"
+echo "  Credentials: My Account → Manage License Keys"
+echo ""
+
+if [[ -z "$ACCOUNT_ID" ]]; then
+    read -rp "? MaxMind Account ID: " ACCOUNT_ID
+fi
+if [[ -z "$LICENSE_KEY" ]]; then
+    read -rsp "? MaxMind License Key (hidden): " LICENSE_KEY
+    echo ""
+fi
+
 if [[ -z "$ACCOUNT_ID" || -z "$LICENSE_KEY" ]]; then
-    echo "Usage: sudo bash $0 <account_id> <license_key>"
+    echo "[ERROR] Account ID and License Key are required."
     exit 1
 fi
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_DIR="$(dirname "$SCRIPT_DIR")"
 
+echo ""
 echo "[1/4] Installing geoipupdate…"
 apt-get update -qq
 apt-get install -y -qq geoipupdate

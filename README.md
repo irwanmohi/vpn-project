@@ -151,11 +151,13 @@ After the script finishes, only one manual step remains:
 cd /opt/vpn-project && sudo venv/bin/python create_admin.py
 
 # (Optional but recommended) Enable HTTPS with Let's Encrypt
-sudo bash scripts/setup_https.sh yourdomain.com admin@example.com
+# Interactive — prompts for domain and email
+sudo bash scripts/setup_https.sh
 
 # (Optional) Local MaxMind GeoLite2 geolocation — faster, no API rate limit.
+# Interactive — prompts for your MaxMind Account ID and License Key
 # Free credentials: https://www.maxmind.com/en/geolite2/signup
-sudo bash scripts/setup_geoip.sh YOUR_ACCOUNT_ID YOUR_LICENSE_KEY
+sudo bash scripts/setup_geoip.sh
 ```
 
 ---
@@ -287,7 +289,7 @@ PATH=/usr/local/sbin:/usr/local/bin:/sbin:/bin:/usr/sbin:/usr/bin
 #### Step 12 — (Optional) Add HTTPS with Let's Encrypt
 
 ```bash
-sudo bash scripts/setup_https.sh yourdomain.com admin@example.com
+sudo bash scripts/setup_https.sh    # interactive — prompts for domain and email
 ```
 
 Certbot auto-renews the certificate and reconfigures Nginx for HTTPS.
