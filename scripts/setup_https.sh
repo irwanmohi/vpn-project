@@ -33,8 +33,10 @@ fi
 
 nginx -t && systemctl reload nginx
 
+systemctl enable --now certbot.timer 2>/dev/null || true
+
 echo ""
 echo "[OK] HTTPS enabled — https://$DOMAIN"
 echo "[OK] HTTP now redirects to HTTPS."
-echo "[OK] Auto-renewal handled by certbot.timer:"
+echo "[OK] Auto-renewal enabled via certbot.timer:"
 systemctl list-timers certbot.timer --no-pager | head -3 || true

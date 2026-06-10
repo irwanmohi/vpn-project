@@ -15,11 +15,11 @@ if [[ "$EUID" -ne 0 ]]; then
     exit 1
 fi
 
-echo "[1/5] Creating log directory $LOG_DIR…"
+echo "[1/6] Creating log directory $LOG_DIR…"
 mkdir -p "$LOG_DIR"
 chown root:root "$LOG_DIR"
 
-echo "[2/5] Installing systemd unit…"
+echo "[2/6] Installing systemd unit…"
 UNIT_FILE="$PROJECT_DIR/scripts/vpn-webapp.service"
 
 sed \
@@ -30,15 +30,23 @@ sed \
 
 echo "      Written: /etc/systemd/system/${SERVICE_NAME}.service"
 
-echo "[3/5] Enabling WireGuard (wg-quick@wg0)…"
+echo "[3/6] Enabling WireGuard (wg-quick@wg0)…"
 systemctl enable wg-quick@wg0 2>/dev/null || true
 
-echo "[4/5] Enabling MySQL…"
+echo "[4/6] Enabling MySQL…"
 systemctl enable mysql 2>/dev/null || systemctl enable mariadb 2>/dev/null || true
 
-echo "[5/5] Enabling and starting vpn-webapp…"
+echo "[5/6] Enabling and starting vpn-webapp…"
 systemctl daemon-reload
 systemctl enable --now "$SERVICE_NAME"
+
+echo "[6/6] Enabling SSL auto-renewal (certbot.timer)…"
+if systemctl list-unit-files certbot.timer >/dev/null 2>&1; then
+    systemctl enable --now certbot.timer 2>/dev/null || true
+    echo "      certbot.timer enabled — certificates renew automatically."
+else
+    echo "      certbot not installed — skip (run setup_https.sh first if you need SSL)."
+fi
 
 echo ""
 echo "All services enabled:"
@@ -46,5 +54,6 @@ echo ""
 systemctl is-enabled wg-quick@wg0   && echo "  [OK] wg-quick@wg0"
 systemctl is-enabled mysql 2>/dev/null || systemctl is-enabled mariadb 2>/dev/null && echo "  [OK] mysql/mariadb"
 systemctl is-enabled "$SERVICE_NAME" && echo "  [OK] $SERVICE_NAME (Flask)"
+systemctl is-enabled certbot.timer 2>/dev/null && echo "  [OK] certbot.timer (SSL auto-renew)"
 echo ""
 systemctl status "$SERVICE_NAME" --no-pager -l | head -20
